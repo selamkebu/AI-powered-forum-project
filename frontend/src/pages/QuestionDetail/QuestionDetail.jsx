@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import MDEditor from "@uiw/react-md-editor";
+import Avatar from "react-avatar";
 import { getSingleQuestion } from "../../services/question.service.js";
 import { assessAnswerFit } from "../../services/answer/answer.service.js";
 import { postAnswer } from "../../services/answer/answer.service.js";
@@ -109,7 +110,9 @@ function QuestionDetail() {
       </div>
       <section>
         <div>
-          <div>{getInitials(fullName(question.author?.name))}</div>
+          <div>
+            <Avatar name={getFullName(question.author)} size="40" round />
+          </div>
           <div>
             <p>{fullName(question.author)}</p>
             <p>Posted {formatDate(question.createdAt)}</p>
@@ -155,7 +158,13 @@ function QuestionDetail() {
               <div key={givenanswers.id}>
                 <div>
                   <div>
-                    <p>{getInitials(fullName(givenanswers.author))}</p>
+                    <p>
+                      <Avatar
+                        name={fullName(givenanswers.author)}
+                        size="40"
+                        round
+                      />
+                    </p>
                     <p>{fullName(givenanswers.author)}</p>
                   </div>
                   <div>
