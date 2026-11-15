@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
-import MDEditor from "@uiw/react-md-editor";
+import MDEditor, { commands } from "@uiw/react-md-editor";
 import Avatar from "react-avatar";
 import { getSingleQuestion } from "../../services/question.service.js";
 import { assessAnswerFit } from "../../services/answer/answer.service.js";
@@ -188,11 +188,29 @@ function QuestionDetail() {
             <MDEditor
               value={answerText}
               onChange={(val) => {
-                setAnswerText(val ?? "");
+                setAnswerText(val);
                 setFitResult(null);
               }}
               preview="edit"
               height={250}
+              commands={[
+                commands.bold,
+                commands.italic,
+                commands.divider,
+                commands.code,
+                commands.link,
+              ]}
+              extraCommands={[
+                {
+                  name: "character-count",
+                  keyCommand: "character-count",
+                  icon: <p>{answerText.length} characters</p>,
+                },
+              ]}
+              textareaProps={{
+                placeholder:
+                  "Type your answer here... You can use Markdown to format your code!",
+              }}
             />
           </div>
           <p>
