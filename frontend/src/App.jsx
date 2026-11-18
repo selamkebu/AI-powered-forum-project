@@ -59,7 +59,7 @@ function App() {
               path='/rag-documents'
               element={
                 <ProtectedRoute>
-                  <h1>RAG Documents Page</h1>
+                  <h1>RAG Documents Pages</h1>
                 </ProtectedRoute>
               }
             />
