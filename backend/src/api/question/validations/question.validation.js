@@ -1,7 +1,7 @@
 import { param, query } from "express-validator";
 import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
-export const listQuestionsValidation = [
+export const getQuestionsValidation = [
   query("search")
     .optional()
     .isString()
@@ -12,14 +12,6 @@ export const listQuestionsValidation = [
     .optional()
     .isIn(["true", "false", "1", "0"])
     .withMessage("mine must be true or false"),
-  query("page")
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage("page must be a positive integer"),
-  query("limit")
-    .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage("limit must be between 1 and 100"),
 
   validationErrorHandler,
 ];
