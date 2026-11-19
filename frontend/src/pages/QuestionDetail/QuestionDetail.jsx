@@ -1,18 +1,24 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { data, Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import MDEditor, { commands } from "@uiw/react-md-editor";
 import { ArrowLeft, Share2, MessageSquare, Sparkles } from "lucide-react";
 import Avatar from "react-avatar";
-// import { getSingleQuestion } from "../../services/question.service.js";
-// import { assessAnswerFit } from "../../services/answer/answer.service.js";
-// import { postAnswer } from "../../services/answer/answer.service.js";
+import {
+  getSingleQuestion,
+  getSimilarQuestions,
+} from "../../services/question.service.js";
+import {
+  assessAnswerFit,
+  postAnswer,
+} from "../../services/answer/answer.service.js";
 import { useAuth } from "../../contexts/AuthContext";
 import styles from "./QuestionDetail.module.css";
 
 function QuestionDetail() {
   let { questionHash } = useParams();
   let navigate = useNavigate();
+  // set the question details and related question
   let [question, setQuestion] = useState();
   let [answers, setAnswers] = useState([]);
   let [related, setRelated] = useState([]);
@@ -32,25 +38,17 @@ function QuestionDetail() {
     `${author?.firstName ?? ""} ${author?.lastName ?? ""}`.trim();
   let formatDate = (date) => new Date(date).toLocaleDateString();
   useEffect(() => {
-    // on mounting the page a single detailed question will be fetched
+    // on mounting the page a single detailed question with its related questiions will be fetched
     async function mount() {
       setIsLoading(true);
       try {
-        // let data = await getSingleQuestion(questionHash);
+        let questionData = await getSingleQuestion(questionHash);
+        let relatedData = await getRelatedQuestions(questionHash);
 
-        // i will remove this letter
-        let data = await fetch(
-          `http://localhost:4500/api/questions/${questionHash}`,
-        ).then((res) => {
-          if (!res.ok) throw new Error("Failed to fetch question");
-          return res.json();
-        });
-        console.log("QUESTION returned ");
-        setQuestion(data.question);
-        setAnswers(data.answers);
-        setRelated(data.related);
+        setQuestion(questionData.question);
+        setAnswers(questionData.answers);
+        setRelated(relatedData.data);
       } catch (err) {
-        console.log("error occured");
         setError("Failed to load question");
       } finally {
         setIsLoading(false);
@@ -58,31 +56,17 @@ function QuestionDetail() {
     }
     mount();
   }, [questionHash]);
-  // let { user: currentUser } = useAuth();
 
-  // i will remove this letter
-  const currentUser = { id: 1, firstName: "Abebe", lastName: "Kebede" };
-
-  let isOwnQuestion = question?.author?.id === currentUser.id;
-  let canSubmit = answerText.trim().length >= 20;
   // on click of the post button the answer will be posted as an answer
+
+  let { user: currentUser } = useAuth();
   async function handlePostAnswer() {
     setIsPosting(true);
 
     try {
-      // const newAnswer = await postAnswer(question.id, answerText);
+      const newAnswer = await postAnswer(question.id, answerText);
 
-      // i will remove it later
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      if (answerText.includes("fail")) throw new Error("fake failure"); // type "fail" to test the error design
-      const newAnswer = {
-        id: Date.now(),
-        author: currentUser,
-        createdAt: new Date().toISOString(),
-        content: answerText,
-      };
-
-      setAnswers((prev) => [...prev, newAnswer]);
+      setAnswers((prev) => [...prev, newAnswer.data]);
       setAnswerText("");
       setFitResult(null);
     } catch (err) {
@@ -91,42 +75,19 @@ function QuestionDetail() {
       setIsPosting(false);
     }
   }
+  // on click of the check fit button, the fitness of the answer will be assessed
   async function handleFitCheck() {
     if (!canSubmit) return;
     setIsChecking(true);
     setFitError("");
     setFitResult(null);
     try {
-      // const result = await assessAnswerFit(questionHash, answerText);
+      const fitData = await assessAnswerFit(questionHash, answerText);
 
-      // i will remove later
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      const questionWords = `${question.title} ${question.body}`
-        .toLowerCase()
-        .split(/\W+/)
-        .filter((w) => w.length > 3);
-      const overlap = answerText
-        .toLowerCase()
-        .split(/\W+/)
-        .filter((w) => questionWords.includes(w)).length;
-      const result =
-        overlap >= 3
-          ? {
-              level: "STRONG FIT",
-              note: "Your draft addresses the question directly.",
-            }
-          : overlap >= 1
-            ? {
-                level: "PARTIAL FIT",
-                note: "Your draft touches the topic but could be more specific.",
-              }
-            : {
-                level: "WEAK FIT",
-                note: "Your draft doesn't seem related to the question yet.",
-              };
+      setFitResult(fitData.data);
 
-      setFitResult(result);
-      if (result.level == "WEAK FIT") {
+      // controls the color of the fit check response
+      if (fitData.level == "WEAK FIT") {
         setFitColor("red");
       } else if (result.level == "PARTIAL FIT") {
         setFitColor("grey");
