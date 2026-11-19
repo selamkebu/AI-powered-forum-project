@@ -25,3 +25,25 @@ export const singleQuestionValidation = [
 
   validationErrorHandler,
 ];
+
+export const getSimilarQuestionsValidation = [
+  param("questionHash")
+    .matches(/^[a-f0-9]{16}$/)
+    .withMessage(
+      "Question hash must be exactly 16 lowercase hexadecimal characters"
+    ),
+
+  query("k")
+    .optional()
+    .isInt({ min: 1, max: 20 })
+    .withMessage("k must be an integer between 1 and 20")
+    .toInt(),
+
+  query("threshold")
+    .optional()
+    .isFloat({ min: 0, max: 1 })
+    .withMessage("threshold must be between 0 and 1")
+    .toFloat(),
+
+  validationErrorHandler,
+];
