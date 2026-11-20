@@ -9,7 +9,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import { getQuestions } from '../../services/question.service';
+import { getQuestions } from '../../services/myQuestion/question.service';
 import styles from './MyQuestions.module.css';
 
 // Handles common API response formats.
