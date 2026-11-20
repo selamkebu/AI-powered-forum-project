@@ -49,23 +49,87 @@ function getAvatarColor(authorId) {
   return `hsl(${(seed * 47) % 360} 75% 80%)`;
 }
 
+/**
+ * One row of the discussion feed.
+ * Exported so other pages (e.g. MyQuestions) can reuse the exact same card.
+ * It reads the logged-in user itself, so callers only pass the question.
+ */
+export function QuestionCard({ question }) {
+  const { user } = useAuth();
+
+  // Is this thread written by the logged-in user? (drives accent, badge, "You")
+  const mine = isAuthoredByUser(question, user);
+  const answerCount = Number(question.answerCount) || 0;
+  const authorName = mine
+    ? "You"
+    : `${question.author?.firstName ?? ""} ${question.author?.lastName ?? ""}`.trim() ||
+      "Unknown";
+
+  return (
+    // Whole card is a Link => navigates to the detail route from App.jsx
+    <Link
+      to={`/question/${question.questionHash}`}
+      className={`${styles.dashboard__card} ${
+        mine ? styles["dashboard__card--mine"] : ""
+      }`}
+    >
+      <div
+        className={`${styles.dashboard__avatar} ${
+          mine ? styles["dashboard__avatar--mine"] : ""
+        }`}
+        style={{ backgroundColor: getAvatarColor(question.author?.id) }}
+        aria-hidden
+      >
+        {getInitials(question.author)}
+      </div>
+
+      <div className={styles.dashboard__cardBody}>
+        <div className={styles.dashboard__cardTop}>
+          <h3 className={styles.dashboard__cardTitle}>{question.title}</h3>
+          {mine && <span className={styles.dashboard__yoursBadge}>Yours</span>}
+          {/* Only semantic search results carry a score */}
+          {typeof question.score === "number" && (
+            <span className={styles.dashboard__scoreBadge}>
+              {Math.round(question.score * 100)}% match
+            </span>
+          )}
+        </div>
+
+        {question.content && (
+          <p className={styles.dashboard__cardExcerpt}>{question.content}</p>
+        )}
+
+        <div className={styles.dashboard__cardMeta}>
+          <span className={styles.dashboard__metaItem}>
+            <MessageSquare size={12} aria-hidden />
+            {answerCount} {answerCount === 1 ? "reply" : "replies"}
+          </span>
+          <span className={styles.dashboard__metaItem}>
+            {timeAgo(question.createdAt)} by {authorName}
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
 
-  // the Navbar owns the search box; we only READ ?q= and ?semantic=.
+  // STEP 1: the Navbar owns the search box; we only READ ?q= and ?semantic=.
   const keyword = searchParams.get("q")?.trim() ?? "";
   const semanticQuery = searchParams.get("semantic")?.trim() ?? "";
   const isSemantic = semanticQuery !== "";
   const queryTooShort =
     isSemantic && semanticQuery.length < SEMANTIC_MIN_LENGTH;
 
-  // page state (questions, isLoading, error flag).
+  // STEP 2: page state (questions, isLoading, error flag).
   const [questions, setQuestions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
-  // fetch on mount and whenever the URL search changes.
+  // STEP 3: fetch on mount and whenever the URL search changes.
   useEffect(() => {
     // Too-short semantic queries never hit the API (it would answer 400).
     if (queryTooShort) return undefined;
@@ -107,7 +171,7 @@ export default function Dashboard() {
   const visibleQuestions = queryTooShort ? [] : questions;
   const showLoading = isLoading && !queryTooShort;
 
-  // stats are computed from the list on screen (no extra API call).
+  // STEP 4: stats are computed from the list on screen (no extra API call).
   const stats = {
     questions: visibleQuestions.length,
     replies: visibleQuestions.reduce(
@@ -132,7 +196,7 @@ export default function Dashboard() {
       ? `Keyword results for “${keyword}”`
       : "Your threads use a slim left accent in this list.";
 
-  // pick ONE feed state, in the order of your flowchart.
+  // STEP 5: pick ONE feed state, in the order of your flowchart.
   const renderFeedBody = () => {
     if (queryTooShort) {
       return (
@@ -177,74 +241,14 @@ export default function Dashboard() {
       );
     }
 
+    // Each row uses the shared, exported QuestionCard
     return (
       <ul className={styles.dashboard__list}>
-        {visibleQuestions.map((question) => {
-          const mine = isAuthoredByUser(question, user);
-          const answerCount = Number(question.answerCount) || 0;
-          const authorName = mine
-            ? "You"
-            : `${question.author?.firstName ?? ""} ${question.author?.lastName ?? ""}`.trim() ||
-              "Unknown";
-
-          return (
-            <li key={question.id}>
-              {/* whole card is a Link => navigates to the detail route from App.jsx */}
-              <Link
-                to={`/question/${question.questionHash}`}
-                className={`${styles.dashboard__card} ${
-                  mine ? styles["dashboard__card--mine"] : ""
-                }`}
-              >
-                <div
-                  className={`${styles.dashboard__avatar} ${
-                    mine ? styles["dashboard__avatar--mine"] : ""
-                  }`}
-                  style={{
-                    backgroundColor: getAvatarColor(question.author?.id),
-                  }}
-                  aria-hidden
-                >
-                  {getInitials(question.author)}
-                </div>
-
-                <div className={styles.dashboard__cardBody}>
-                  <div className={styles.dashboard__cardTop}>
-                    <h3 className={styles.dashboard__cardTitle}>
-                      {question.title}
-                    </h3>
-                    {mine && (
-                      <span className={styles.dashboard__yoursBadge}>
-                        Yours
-                      </span>
-                    )}
-                    {typeof question.score === "number" && (
-                      <span className={styles.dashboard__scoreBadge}>
-                        {Math.round(question.score * 100)}% match
-                      </span>
-                    )}
-                  </div>
-
-                  {question.content && (
-                    <p className={styles.dashboard__cardExcerpt}>
-                      {question.content}
-                    </p>
-                  )}
-
-                  <div className={styles.dashboard__cardMeta}>
-                    <span className={styles.dashboard__metaItem}>
-                      <MessageSquare size={12} aria-hidden />
-                      {answerCount} {answerCount === 1 ? "reply" : "replies"}
-                    </span>
-                    <span className={styles.dashboard__metaItem}>
-                      {timeAgo(question.createdAt)} by {authorName}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            </li>
-          );
-        })}
+        {visibleQuestions.map((question) => (
+          <li key={question.id}>
+            <QuestionCard question={question} />
+          </li>
+        ))}
       </ul>
     );
   };
