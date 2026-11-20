@@ -3,10 +3,12 @@ import { authenticateUser } from "../../../middleware/authentication.js";
 import {
   getQuestionsController,
   getSingleQuestionController,
+  getSimilarQuestionsController,
 } from "../controller/question.controller.js";
 import {
   getQuestionsValidation,
   singleQuestionValidation,
+  getSimilarQuestionsValidation,
 } from "../validations/question.validation.js";
 
 const router = express.Router();
@@ -24,6 +26,12 @@ router.get(
 );
 
 //implement your other routes here (declare /search before /:questionHash)
+router.get(
+  "/:questionHash/similar",
+  authenticateUser,
+  getSimilarQuestionsValidation,
+  getSimilarQuestionsController,
+);
 
 router.get(
   "/:questionHash",

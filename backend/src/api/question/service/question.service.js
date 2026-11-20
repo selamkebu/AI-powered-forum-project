@@ -158,3 +158,164 @@ export const getSingleQuestionService = async (questionHash) => {
     },
   };
 };
+
+//n
+
+// T-11: Find Similar Questions
+
+const parseEmbedding = (embedding) => {
+  try {
+    const parsed =
+      typeof embedding === "string" ? JSON.parse(embedding) : embedding;
+
+    if (
+      !Array.isArray(parsed) ||
+      parsed.length === 0 ||
+      !parsed.every((value) => Number.isFinite(Number(value)))
+    ) {
+      return null;
+    }
+
+    return parsed.map(Number);
+  } catch {
+    return null;
+  }
+};
+
+const cosineSimilarity = (a, b) => {
+  if (!a || !b || a.length !== b.length) return -1;
+
+  let dotProduct = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    magnitudeA += a[i] * a[i];
+    magnitudeB += b[i] * b[i];
+  }
+
+  if (magnitudeA === 0 || magnitudeB === 0) return -1;
+
+  return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
+};
+
+export const getSimilarQuestionsService = async ({
+  questionHash,
+  k = Number(process.env.RECOMMEND_K) || 5,
+  threshold = Number(process.env.RECOMMEND_THRESHOLD ?? 0.75),
+}) => {
+  k = Number(k);
+  threshold = Number(threshold);
+
+  const sourceRows = await safeExecute(
+    `SELECT q.question_id, qv.embedding
+     FROM questions q
+     INNER JOIN question_vectors qv
+       ON q.question_id = qv.question_id
+     WHERE q.question_hash = ? AND qv.status = 'ready'
+     LIMIT 1`,
+    [questionHash]
+  );
+
+  if (sourceRows.length === 0) {
+    throw new NotFoundError("Question or its ready embedding was not found");
+  }
+
+  const sourceEmbedding = parseEmbedding(sourceRows[0].embedding);
+
+  if (!sourceEmbedding) {
+    throw new NotFoundError("Question embedding is invalid");
+  }
+
+  const vectorRows = await safeExecute(
+    `SELECT question_id, embedding
+     FROM question_vectors
+     WHERE question_id != ? AND status = 'ready'`,
+    [sourceRows[0].question_id]
+  );
+
+  const similarQuestions = vectorRows
+    .map((row) => {
+      const embedding = parseEmbedding(row.embedding);
+      if (!embedding) return null;
+
+      return {
+        id: row.question_id,
+        score: cosineSimilarity(sourceEmbedding, embedding),
+      };
+    })
+    .filter(
+      (question) => question !== null && question.score >= threshold
+    )
+    .sort((a, b) => b.score - a.score)
+    .slice(0, k);
+
+  if (similarQuestions.length === 0) {
+    return {
+      data: [],
+      meta: { total: 0, k, threshold, query: null, questionHash },
+    };
+  }
+
+  const questionIds = similarQuestions.map((question) => question.id);
+  const placeholders = questionIds.map(() => "?").join(", ");
+
+  const detailRows = await safeExecute(
+    `SELECT
+       q.question_id AS id,
+       q.question_hash AS questionHash,
+       q.title,
+       q.content,
+       q.created_at AS createdAt,
+       q.updated_at AS updatedAt,
+       u.user_id AS authorId,
+       u.first_name AS firstName,
+       u.last_name AS lastName,
+       (SELECT COUNT(*)
+        FROM answers a
+        WHERE a.question_id = q.question_id) AS answerCount
+     FROM questions q
+     INNER JOIN users u ON q.user_id = u.user_id
+     WHERE q.question_id IN (${placeholders})`,
+    questionIds
+  );
+
+  const detailsMap = new Map(
+    detailRows.map((row) => [row.id, row])
+  );
+
+  const data = similarQuestions
+    .map((similarQuestion) => {
+      const question = detailsMap.get(similarQuestion.id);
+      if (!question) return null;
+
+      return {
+        id: question.id,
+        questionHash: question.questionHash,
+        title: question.title,
+        content: question.content,
+        answerCount: Number(question.answerCount),
+        createdAt: question.createdAt,
+        updatedAt: question.updatedAt,
+        author: {
+          id: question.authorId,
+          firstName: question.firstName,
+          lastName: question.lastName,
+        },
+        score: similarQuestion.score,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    data,
+    meta: {
+      total: data.length,
+      k,
+      threshold,
+      query: null,
+      questionHash,
+    },
+  };
+};
