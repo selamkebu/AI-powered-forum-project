@@ -1,7 +1,7 @@
 import { param, query } from "express-validator";
 import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
-export const listQuestionsValidation = [
+export const getQuestionsValidation = [
   query("search")
     .optional()
     .isString()
@@ -12,14 +12,6 @@ export const listQuestionsValidation = [
     .optional()
     .isIn(["true", "false", "1", "0"])
     .withMessage("mine must be true or false"),
-  query("page")
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage("page must be a positive integer"),
-  query("limit")
-    .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage("limit must be between 1 and 100"),
 
   validationErrorHandler,
 ];
@@ -30,6 +22,28 @@ export const singleQuestionValidation = [
     .withMessage(
       "Question hash must be exactly 16 lowercase hexadecimal characters",
     ),
+
+  validationErrorHandler,
+];
+
+export const getSimilarQuestionsValidation = [
+  param("questionHash")
+    .matches(/^[a-f0-9]{16}$/)
+    .withMessage(
+      "Question hash must be exactly 16 lowercase hexadecimal characters"
+    ),
+
+  query("k")
+    .optional()
+    .isInt({ min: 1, max: 20 })
+    .withMessage("k must be an integer between 1 and 20")
+    .toInt(),
+
+  query("threshold")
+    .optional()
+    .isFloat({ min: 0, max: 1 })
+    .withMessage("threshold must be between 0 and 1")
+    .toFloat(),
 
   validationErrorHandler,
 ];
