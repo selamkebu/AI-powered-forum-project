@@ -7,6 +7,7 @@ import {
 import {
   getQuestionsValidation,
   singleQuestionValidation,
+  assessAnswerAgainstQuestionValidation
 } from "../validations/question.validation.js";
 
 const router = express.Router();
@@ -31,5 +32,19 @@ router.get(
   singleQuestionValidation,
   getSingleQuestionController,
 );
+
+/** 
+* @route POST /api/questions/:questionHash/answer-fit
+* @desc AI relevance check for an answer draft vs the question
+* @access Protected 
+
+*/
+router.post(
+  '/:questionHash/answer-fit',
+  authenticateUser,
+  assessAnswerAgainstQuestionValidation,
+
+)
+
 
 export default router;
