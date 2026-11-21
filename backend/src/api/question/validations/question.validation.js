@@ -1,4 +1,4 @@
-import { param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
 export const getQuestionsValidation = [
@@ -23,8 +23,7 @@ export const singleQuestionValidation = [
       "Question hash must be exactly 16 lowercase hexadecimal characters",
     ),
 
-  validationErrorHandler,
-];
+  validationErrorHandler,];
 
 export const getSimilarQuestionsValidation = [
   param("questionHash")
@@ -44,6 +43,44 @@ export const getSimilarQuestionsValidation = [
     .isFloat({ min: 0, max: 1 })
     .withMessage("threshold must be between 0 and 1")
     .toFloat(),
+
+  validationErrorHandler,
+];
+
+
+/**
+ * T-09: Create Question API
+ * POST /api/questions
+ */
+export const createQuestionValidation = [
+  body("title")
+    .isString()
+    .withMessage("Title must be a string")
+    .bail()
+    .trim()
+    .isLength({ min: 5, max: 255 })
+    .withMessage("Title must be between 5 and 255 characters"),
+
+  body("description")
+    .isString()
+    .withMessage("Description must be a string")
+    .bail()
+    .trim()
+    .isLength({ min: 10 })
+    .withMessage("Description must contain at least 10 characters"),
+
+  body("tags")
+    .optional()
+    .isArray()
+    .withMessage("Tags must be an array"),
+
+  body("tags.*")
+    .isString()
+    .withMessage("Each tag must be a string")
+    .bail()
+    .trim()
+    .notEmpty()
+    .withMessage("Tags cannot contain empty strings"),
 
   validationErrorHandler,
 ];

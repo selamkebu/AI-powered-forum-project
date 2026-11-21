@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
 
@@ -317,5 +318,45 @@ export const getSimilarQuestionsService = async ({
       query: null,
       questionHash,
     },
+  };
+};
+
+
+/**
+ * T-09: Create Question API
+ * Creates a new question in the database.
+ *
+ * @param {Object} params
+ * @param {number} params.userId - Authenticated user ID
+ * @param {string} params.title - Question title
+ * @param {string} params.content - Question description
+ * @returns {Promise<Object>} Created question
+ */
+export const createQuestionWithVectorService = async ({
+  userId,
+  title,
+  content,
+}) => {
+  const questionHash = randomBytes(8).toString("hex");
+
+  const sql = `
+    INSERT INTO questions
+      (question_hash, user_id, title, content)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  const result = await safeExecute(sql, [
+    questionHash,
+    userId,
+    title,
+    content,
+  ]);
+
+  return {
+    id: result.insertId,
+    questionHash,
+    title,
+    content,
+    userId,
   };
 };

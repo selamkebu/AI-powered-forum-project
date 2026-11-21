@@ -1,10 +1,11 @@
 import { StatusCodes } from "http-status-codes";
+
 import {
   getQuestionsService,
   getSingleQuestionService,
   getSimilarQuestionsService,
+  createQuestionWithVectorService,
 } from "../service/question.service.js";
-
 /**
  * GET /api/questions
  * Query: search, mine
@@ -68,6 +69,35 @@ export const getSimilarQuestionsController = async (req, res, next) => {
       success: true,
       message: "Similar questions fetched successfully",
       ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+ /**
+ * T-09: Create Question API
+ * POST /api/questions
+ * Access: Private
+ */
+export const createQuestionController = async (req, res, next) => {
+  try {
+    const { title, description } = req.body;
+
+    // Get user ID from authentication middleware
+    const userId = req.user.id;
+
+    // Create question using the service
+    const question = await createQuestionWithVectorService({
+      userId,
+      title: title.trim(),
+      content: description.trim(),
+    });
+
+    return res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: "Question created successfully.",
+      data: question,
     });
   } catch (error) {
     next(error);
