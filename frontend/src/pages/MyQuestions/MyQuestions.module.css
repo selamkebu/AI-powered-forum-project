@@ -1,385 +1,161 @@
-/* =========================================
-   PAGE WRAPPER
-   ========================================= */
-.myQuestionsPage {
+.page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px;
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-    Ubuntu, Cantarell, sans-serif;
-  color: #1e293b;
-}
-
-/* =========================================
-   PAGE HEADER CARD
-   ========================================= */
-.pageHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
   gap: 24px;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 28px 32px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  padding: 24px 32px;
 }
 
-.headerContent {
+/* ---------- Header card ---------- */
+.header {
   display: flex;
-  flex-direction: column;
-  max-width: 560px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 32px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
 }
 
 .eyebrow {
+  margin: 0 0 12px;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #ea580c;
-  margin-bottom: 8px;
+  letter-spacing: 0.08em;
+  color: #c2410c;
 }
 
-.headerContent h1 {
-  margin: 0 0 10px 0;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.2;
+.heading {
+  margin: 0 0 12px;
+  font-size: 32px;
   color: #0f172a;
 }
 
-.headerContent p {
+.subtitle {
+  max-width: 640px;
   margin: 0;
-  font-size: 14px;
-  line-height: 1.55;
-  color: #475569;
-}
-
-.newQuestionButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  background-color: #f97316;
-  color: #ffffff;
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  padding: 10px 18px;
-  border-radius: 8px;
-  white-space: nowrap;
-  transition: background-color 0.15s ease, transform 0.1s ease;
-  flex-shrink: 0;
-}
-
-.newQuestionButton:hover {
-  background-color: #ea580c;
-}
-
-.newQuestionButton:active {
-  transform: translateY(1px);
-}
-
-/* =========================================
-   MAIN CONTENT CONTAINER (Outer Card)
-   ========================================= */
-.questionsContainer {
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 20px;
-  min-height: 170px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
-}
-
-/* =========================================
-   1. LOADING STATE
-   ========================================= */
-.loadingState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  text-align: center;
-  color: #475569;
-  font-size: 14px;
-}
-
-.spinner {
-  width: 24px;
-  height: 24px;
-  border: 2.5px solid #e2e8f0;
-  border-top-color: #f97316;
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-  margin-bottom: 12px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loadingState p {
-  margin: 0;
-}
-
-/* =========================================
-   2. ERROR STATE
-   ========================================= */
-.errorState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  width: 100%;
-  max-width: 260px;
-  min-height: 125px;
-  margin: 12px auto;
-  padding: 20px 24px;
-  background-color: #fee2e2;
-  border: 1px solid #fecaca;
-  border-radius: 12px;
-  text-align: center;
-}
-
-.errorState p {
-  margin: 0;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: #dc2626;
-  line-height: 1.4;
-}
-
-.retryButton {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background-color: #ffffff;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-}
-
-.retryButton:hover {
-  background-color: #fef2f2;
-}
-
-/* =========================================
-   3. EMPTY STATE
-   ========================================= */
-.emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  max-width: 440px;
-  margin: 12px auto;
-  padding: 36px 28px;
-  background-color: #f4f7fa;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  text-align: center;
-}
-
-.emptyIcon {
-  color: #64748b;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.emptyState h2 {
-  margin: 0 0 8px 0;
   font-size: 15px;
-  font-weight: 600;
+  line-height: 1.6;
   color: #334155;
 }
 
-.emptyState p {
-  margin: 0 0 18px 0;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: #475569;
-}
-
-.emptyButton {
+/* Orange "+ New question" button (a Link styled like a button) */
+.newButton {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background-color: #f97316;
-  color: #ffffff;
-  font-size: 13.5px;
-  font-weight: 600;
-  text-decoration: none;
-  padding: 9px 16px;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f97316;
   border-radius: 8px;
-  transition: background-color 0.15s ease;
-}
-
-.emptyButton:hover {
-  background-color: #ea580c;
-}
-
-/* =========================================
-   4. QUESTIONS LIST & QUESTION CARD
-   ========================================= */
-.questionList {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  width: 100%;
-}
-
-.questionCard {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-  background-color: #f4f7fa;
-  border: 1px solid #e2e8f0;
-  border-left: 3.5px solid #f97316;
-  border-radius: 12px;
-  padding: 20px 22px;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
-}
-
-.questionCard:hover {
-  background-color: #eef3f8;
-  border-color: #cbd5e1;
-  border-left-color: #ea580c;
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #7dd3fc;
-  color: #0f172a;
+  color: #fff;
   font-size: 14px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-top: 2px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.15s;
 }
 
-.questionContent {
-  flex: 1;
-  min-width: 0;
+.newButton:hover {
+  background: #ea580c;
+}
+
+/* ---------- List card ---------- */
+.listCard {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  overflow: hidden; /* keeps the rows' backgrounds inside the rounded corners */
+}
+
+.questionList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
+  gap: 0;
 }
 
-.questionTop {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 6px;
+.questionItem {
+  position: relative;
+  border-left: 3px solid transparent;
+  transition:
+    border-left-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
-.questionTitle {
-  font-size: 15.5px;
-  font-weight: 700;
-  color: #0f172a;
-  text-decoration: none;
-  line-height: 1.35;
+.questionItem::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background-color: #f97316;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
 }
 
-.questionTitle:hover {
+.questionItem:hover,
+.questionItem:focus-within {
+  border-left-color: #f97316;
+}
+
+.questionItem:hover::before,
+.questionItem:focus-within::before {
+  opacity: 1;
+}
+
+.questionItem + .questionItem {
+  border-top: 1px solid #e2e8f0;
+}
+
+/* ---------- Loading ---------- */
+.loading {
+  padding: 56px 32px;
+  text-align: center;
+  font-size: 14px;
+  color: #334155;
+  background: linear-gradient(#f8fafc, #fff);
+}
+
+/* ---------- Empty and error boxes (centered inside the card) ---------- */
+.messageBox {
+  width: fit-content;
+  max-width: 450px;
+  margin: 32px auto;
+  padding: 48px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.empty {
+  background: #f1f5f9;
+  border: 1px dashed #cbd5e1; /* dashed border, as in the design */
+  color: #1e293b;
+}
+
+.emptyLink {
   color: #ea580c;
+  text-decoration: none;
+}
+
+.emptyLink:hover {
   text-decoration: underline;
 }
 
-.yoursLabel {
-  background-color: #ffedd5;
-  color: #c2410c;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 999px;
-  white-space: nowrap;
-  flex-shrink: 0;
+.error {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
 }
 
-.questionDescription {
-  margin: 0 0 14px 0;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: #475569;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-clamp: 3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.questionMeta {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  font-size: 12.5px;
-  color: #64748b;
-}
-
-.questionMeta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.authorLabel {
-  margin-left: -6px;
-}
-
-/* =========================================
-   RESPONSIVE BREAKPOINTS
-   ========================================= */
-@media (max-width: 768px) {
-  .myQuestionsPage {
-    padding: 16px;
-  }
-
-  .pageHeader {
+/* ---------- Responsive: stack the button under the text on small screens ---------- */
+@media (max-width: 700px) {
+  .header {
     flex-direction: column;
-    align-items: stretch;
-    padding: 20px;
-  }
-
-  .newQuestionButton {
-    align-self: flex-start;
-  }
-
-  .questionCard {
-    padding: 16px;
-    gap: 12px;
-  }
-
-  .questionTop {
-    flex-direction: column-reverse;
-    gap: 6px;
   }
 }
