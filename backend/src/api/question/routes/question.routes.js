@@ -1,31 +1,31 @@
 import express from "express";
 import { authenticateUser } from "../../../middleware/authentication.js";
 import {
-  listQuestionsController,
+  getQuestionsController,
   getSingleQuestionController,
   generateQuestionDraftCoachController,
+  getSimilarQuestionsController,
 } from "../controller/question.controller.js";
 import {
-  listQuestionsValidation,
+  getQuestionsValidation,
   singleQuestionValidation,
   generateQuestionDraftCoachValidation,
+  getSimilarQuestionsValidation,
 } from "../validations/question.validation.js";
 
 const router = express.Router();
 
 /**
  * @route GET /api/questions
- * @desc List questions (optional ?search=keyword, ?mine=true, ?page, ?limit)
+ * @desc List questions (optional ?search=keyword, ?mine=true)
  * @access Private
  */
 router.get(
   "/",
   authenticateUser,
-  listQuestionsValidation,
-  listQuestionsController,
+  getQuestionsValidation,
+  getQuestionsController,
 );
-
-
 
 /**
  * @route POST /api/questions/draft-coach
@@ -39,7 +39,17 @@ router.post(
   generateQuestionDraftCoachController,
 );
 
-//implement your other routes here (declare /search before /:questionHash)
+/**
+ * @route GET /api/questions/:questionHash/similar
+ * @desc Get similar questions
+ * @access Private
+ */
+router.get(
+  "/:questionHash/similar",
+  authenticateUser,
+  getSimilarQuestionsValidation,
+  getSimilarQuestionsController,
+);
 
 router.get(
   "/:questionHash",

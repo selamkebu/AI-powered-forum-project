@@ -12,10 +12,16 @@ export default function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
 
+  /** True on the dashboard while a keyword (?q=) or AI (?semantic=) search is active. */
+  const params = new URLSearchParams(location.search);
+  const isDashboardSearch =
+    location.pathname === "/dashboard" &&
+    (params.has("q") || params.has("semantic"));
+
   /** Navbar title: keep in sync with routes in `App.jsx`. */
   const getTitle = () => {
     const path = location.pathname;
-    if (path === '/dashboard') return 'Home';
+    if (path === "/dashboard") return isDashboardSearch ? "Forum" : "Home";
     if (path === '/my-questions') return 'Your topics';
     if (path === '/questions/ask') return 'Ask a question';
     if (path.startsWith('/question/')) return 'Discussion';

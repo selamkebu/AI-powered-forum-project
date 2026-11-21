@@ -1,31 +1,30 @@
 import { StatusCodes } from "http-status-codes";
 import {
-  listQuestionsService,
+  getQuestionsService,
   getSingleQuestionService,
+  getSimilarQuestionsService,
 } from "../service/question.service.js";
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
 
 /**
  * GET /api/questions
- * Query: search, mine, page, limit
+ * Query: search, mine
  */
-// Logic for getting the list of all questions
-export const listQuestionsController = async (req, res, next) => {
+export const getQuestionsController = async (req, res, next) => {
   try {
-    const { search, mine, page, limit } = req.query;
+    const { search, mine } = req.query;
 
-    const result = await listQuestionsService({
+    const { questions, meta } = await getQuestionsService({
       userId: req.user.id,
       search: search || "",
       mine: mine === "true" || mine === "1",
-      page,
-      limit,
     });
 
     res.status(StatusCodes.OK).json({
       success: true,
-      count: result.questions.length,
-      ...result,
+      message: "Questions fetched successfully.",
+      data: questions,
+      meta,
     });
   } catch (error) {
     next(error);
@@ -51,8 +50,6 @@ export const getSingleQuestionController = async (req, res, next) => {
   }
 };
 
-
-
 /**
  * POST /api/questions/draft-coach
  * Generate AI suggestions for a question draft.
@@ -76,6 +73,31 @@ export const generateQuestionDraftCoachController = async (
       data: {
         tips: result.tips,
       },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/questions/:questionHash/similar
+ * Query: k, threshold
+ */
+export const getSimilarQuestionsController = async (req, res, next) => {
+  try {
+    const { questionHash } = req.params;
+    const { k, threshold } = req.query;
+
+    const result = await getSimilarQuestionsService({
+      questionHash,
+      k,
+      threshold,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Similar questions fetched successfully",
+      ...result,
     });
   } catch (error) {
     next(error);
