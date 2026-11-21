@@ -1,4 +1,4 @@
-import { param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
 export const listQuestionsValidation = [
@@ -30,6 +30,19 @@ export const singleQuestionValidation = [
     .withMessage(
       "Question hash must be exactly 16 lowercase hexadecimal characters",
     ),
+
+  validationErrorHandler,
+];
+
+export const generateQuestionDraftCoachValidation = [
+  body("title").optional().isString().withMessage("Title must be a string"),
+
+  body("content")
+    .isString()
+    .withMessage("Question content must be a string")
+    .trim()
+    .notEmpty()
+    .withMessage("Question content is required"),
 
   validationErrorHandler,
 ];
