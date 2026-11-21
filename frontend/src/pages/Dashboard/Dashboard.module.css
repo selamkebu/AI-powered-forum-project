@@ -31,6 +31,10 @@
   line-height: 1.6;
   color: var(--text-secondary);
 }
+.dashboard__cardTitle:hover {
+  color: var(--primary-hover);
+  
+}
 
 /* ---------- Quick actions ---------- */
 .dashboard__actions { display: grid; grid-template-columns: 1fr; gap: var(--spacing-md); }
