@@ -1,8 +1,10 @@
 import { StatusCodes } from "http-status-codes";
 import {
+  listQuestionsService,
   getQuestionsService,
   getSingleQuestionService,
   getSimilarQuestionsService,
+  searchQuestionsSemanticService,
 } from "../service/question.service.js";
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
 
@@ -97,6 +99,29 @@ export const getSimilarQuestionsController = async (req, res, next) => {
     res.status(StatusCodes.OK).json({
       success: true,
       message: "Similar questions fetched successfully",
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+/**
+ * GET /api/questions/search
+ * Query params: query (required), k (optional), threshold (optional)
+ */
+export const searchQuestionsSemanticController = async (req, res, next) => {
+  try {
+    const { query, k, threshold } = req.query;
+
+    const result = await searchQuestionsSemanticService({
+      query,
+      k,
+      threshold,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Semantic search completed successfully",
       ...result,
     });
   } catch (error) {
