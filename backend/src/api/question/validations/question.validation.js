@@ -70,3 +70,26 @@ export const getSimilarQuestionsValidation = [
 
   validationErrorHandler,
 ];
+/**
+ * Validate semantic search query parameters
+ */
+export const searchQuestionsValidation = [
+  query("query")
+    .notEmpty()
+    .withMessage("query parameter is required")
+    .isString()
+    .withMessage("query must be a string")
+    .trim()
+    .isLength({ min: 5 })
+    .withMessage("Search query must be at least 5 characters long"),
+  query("k")
+    .optional()
+    .isInt({ min: 1, max: 20 })
+    .withMessage("k must be an integer between 1 and 20"),
+  query("threshold")
+    .optional()
+    .isFloat({ min: 0, max: 1 })
+    .withMessage("threshold must be a float between 0 and 1"),
+
+  validationErrorHandler,
+];
