@@ -2,6 +2,7 @@ import { StatusCodes } from "http-status-codes";
 import {
   getQuestionsService,
   getSingleQuestionService,
+  getSimilarQuestionsService,
 } from "../service/question.service.js";
 
 /**
@@ -41,6 +42,31 @@ export const getSingleQuestionController = async (req, res, next) => {
     res.status(StatusCodes.OK).json({
       success: true,
       message: "Question fetched successfully",
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/questions/:questionHash/similar
+ * Query: k, threshold
+ */
+export const getSimilarQuestionsController = async (req, res, next) => {
+  try {
+    const { questionHash } = req.params;
+    const { k, threshold } = req.query;
+
+    const result = await getSimilarQuestionsService({
+      questionHash,
+      k,
+      threshold,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Similar questions fetched successfully",
       ...result,
     });
   } catch (error) {
