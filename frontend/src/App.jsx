@@ -12,6 +12,7 @@ import Auth from "./pages/Auth/Auth";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import Landing from "./pages/Landing/Landing";
 import PostQuestion from "./pages/PostQuestion/PostQuestion";
+import MyQuestions from './pages/MyQuestions/MyQuestions';
 import QuestionDetail from "./pages/QuestionDetail/QuestionDetail";
 
 function App() {
@@ -45,7 +46,7 @@ function App() {
               path="/my-questions"
               element={
                 <ProtectedRoute>
-                  <h1>My Questions Page</h1>
+                  <MyQuestions />
                 </ProtectedRoute>
               }
             />

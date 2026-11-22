@@ -1,4 +1,4 @@
-import { createQuestion } from "../../services/question/question.service.js";
+import { questionService } from "../../services/question/question.service.js";
 
 
 import {
@@ -91,11 +91,11 @@ function PostQuestion() {
     setCoachFeedback(null);
 
     try {
-     
 
-      const response = await createQuestion({
+
+      const response = await questionService.createQuestion({
         title: formData.title.trim(),
-        description: formData.content.trim(),
+        content: formData.content.trim(),
       });
 
       // Support a response containing data inside response.data.data
@@ -125,8 +125,8 @@ function PostQuestion() {
     setCoachFeedback(null);
 
     try {
-    
-      
+
+
 
       const response = await apiClient.post("/api/questions/draft-coach", {
         title: formData.title.trim(),

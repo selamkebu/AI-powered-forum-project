@@ -42,11 +42,11 @@ async function searchQuestionsSemantic(query, { k, threshold } = {}) {
 }
 
 // Create and publish a new question.
-async function createQuestion({ title, description }) {
+async function createQuestion({ title, content }) {
   try {
     const response = await apiClient.post("/api/questions", {
       title,
-      description,
+      content,
     });
 
     return response.data;
@@ -107,5 +107,3 @@ export const questionService = {
   searchQuestionsSemantic,
   createQuestion,
 };
-
-export { getQuestions, searchQuestionsSemantic, createQuestion };

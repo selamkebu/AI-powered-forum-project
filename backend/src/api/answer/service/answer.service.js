@@ -28,14 +28,14 @@ export const createAnswerService = async (questionId, userId, content) => {
 
   // 4. Fetch the new answer to return formatted data
   const [newAnswerRows] = await db.query(
-    `SELECT 
-       a.answer_id AS id, 
-       a.question_id AS questionId, 
-       a.content, 
-       a.created_at AS createdAt, 
+    `SELECT
+       a.answer_id AS id,
+       a.question_id AS questionId,
+       a.content,
+       a.created_at AS createdAt,
        a.updated_at AS updatedAt,
-       u.user_id AS authorId, 
-       u.first_name AS firstName, 
+       u.user_id AS authorId,
+       u.first_name AS firstName,
        u.last_name AS lastName
      FROM answers a
      JOIN users u ON a.user_id = u.user_id
