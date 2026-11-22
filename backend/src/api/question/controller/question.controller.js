@@ -42,7 +42,8 @@ export const getSingleQuestionController = async (req, res, next) => {
   try {
     const { questionHash } = req.params;
 
-    const result = await getSingleQuestionService(questionHash);
+     
+    const result = await getSingleQuestionService({questionHash,  includeAnswers: false});
 
     res.status(StatusCodes.OK).json({
       success: true,

@@ -1,6 +1,6 @@
 
 import { param } from 'express-validator';
-import { ServiceUnavailableError } from '../../../utils/errors';
+import { ServiceUnavailableError } from '../../../utils/index.js';
 import { registerController } from './../../auth/controller/auth.controller';
 
 import { GoogleGenAI } from "@google/genai";
@@ -24,7 +24,7 @@ function parseJsonObjectFromGeminiText(raw) {
 
     let t = raw.trim();
     if (t.startsWith('```')) {
-        t = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+        t = t.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
     }
     try {
         const v = JSON.parse(t);
@@ -39,7 +39,7 @@ function parseJsonObjectFromGeminiText(raw) {
 async function fetchGeminiJsonTextResponse(userPrompt) {
     const response= await ai.model.generateContent({
         model: GEMINI_TEXT_MODEL,
-        content: userPrompt,
+        contents: userPrompt,
         config:{
             maxOutputTokens: 300,
         },
