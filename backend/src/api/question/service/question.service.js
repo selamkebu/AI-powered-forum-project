@@ -69,7 +69,11 @@ export const getQuestionsService = async ({
   };
 };
 
-export const getSingleQuestionService = async (questionHash) => {
+export const getSingleQuestionService = async ({
+  questionHash, 
+  includeAnswers = true}) => {
+  const normalizedAnswerLimit=100;
+
   const questionSql = `
     SELECT
       q.question_id AS id,
@@ -80,11 +84,13 @@ export const getSingleQuestionService = async (questionHash) => {
       q.updated_at AS updatedAt,
       u.user_id AS authorId,
       u.first_name AS authorFirstName,
-      u.last_name AS authorLastName
+      u.last_name AS authorLastName,
+      COUNT(DISTINCT a.answer_id) as answerCount
     FROM questions q
-    INNER JOIN users u ON q.user_id = u.user_id
+    JOIN users u ON u.user_id = q.user_id
+    LEFT JOIN answers a ON question_id =q.Question_id
     WHERE q.question_hash = ?
-    LIMIT 1
+    GROUP BY q.question_id, u.user_id
   `;
 
   const questionRows = await safeExecute(questionSql, [questionHash]);
@@ -93,7 +99,14 @@ export const getSingleQuestionService = async (questionHash) => {
     throw new NotFoundError("Question not found");
   }
 
-  const questionData = questionRows[0];
+  if(!includeAnswers){
+    return{
+      question: questionRows[0],
+    };
+  }
+
+  const question = questionRows[0];
+  const questionId=question.id;
 
   const countSql = `
     SELECT COUNT(*) AS total
@@ -114,47 +127,44 @@ export const getSingleQuestionService = async (questionHash) => {
       u.first_name AS authorFirstName,
       u.last_name AS authorLastName
     FROM answers a
-    INNER JOIN users u ON a.user_id = u.user_id
+    INNER JOIN users u ON u.user_id = a.user_id
     WHERE a.question_id = ?
-    ORDER BY a.created_at ASC
-    LIMIT ${ANSWERS_LIMIT}
+    ORDER BY a.created_at DESC
+    LIMIT ${normalizedAnswerLimit}
   `;
 
-  const answerRows = await safeExecute(answersSql, [questionData.id]);
-
-  const question = {
-    id: questionData.id,
-    questionHash: questionData.questionHash,
-    title: questionData.title,
-    content: questionData.content,
-    answerCount,
-    createdAt: questionData.createdAt,
-    updatedAt: questionData.updatedAt,
-    author: {
-      id: questionData.authorId,
-      firstName: questionData.authorFirstName,
-      lastName: questionData.authorLastName,
-    },
-  };
-
-  const answers = answerRows.map((answer) => ({
-    id: answer.id,
-    content: answer.content,
-    createdAt: answer.createdAt,
-    updatedAt: answer.updatedAt,
-    author: {
-      id: answer.authorId,
-      firstName: answer.authorFirstName,
-      lastName: answer.authorLastName,
-    },
-  }));
+  const answers = await safeExecute(answersSql, [questionId]);
 
   return {
-    question,
-    answers,
+    question:{
+      id: question.id,
+      questionHash: question.questionHash,
+      title: question.title,
+      content: question.content,
+      answerCount: question.answerCount,
+      createdAt: question.createdAt,
+      updatedAt: question.updatedAt,
+      author:{
+        id:question.userId,
+        firstName: question.firstName,
+        lastName: question.lastName,
+      },
+    },
+
+    answers: answers.map(answer =>({
+      id: answer,id,
+      content : answer.content,
+      createdAt: answer.createdAt,
+      updatedAt: answer.updatedAt,
+      author: {
+        id: answer.userId,
+        firstName: answer.firstName,
+        lastName: answer.lastName,
+      },
+    })),
     answersMeta: {
-      limit: ANSWERS_LIMIT,
-      total: answerCount,
+      limit: normalizedAnswerLimit,
+      total: answers.length,
     },
   };
 };

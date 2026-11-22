@@ -3,6 +3,7 @@ import { authenticateUser } from "../../../middleware/authentication.js";
 import {
   getQuestionsController,
   getSingleQuestionController,
+  assessAnswerAgainstQuestionController,
 } from "../controller/question.controller.js";
 import {
   getQuestionsValidation,
@@ -43,6 +44,7 @@ router.post(
   '/:questionHash/answer-fit',
   authenticateUser,
   assessAnswerAgainstQuestionValidation,
+  assessAnswerAgainstQuestionController,
 
 )
 

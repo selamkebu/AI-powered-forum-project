@@ -2,6 +2,7 @@
 import { param } from 'express-validator';
 import { ServiceUnavailableError } from '../../../utils/errors';
 import { registerController } from './../../auth/controller/auth.controller';
+
 import { GoogleGenAI } from "@google/genai";
 
 
@@ -58,7 +59,7 @@ async function fetchGeminiJsonTextResponse(userPrompt) {
 export const assessAnswerAgainstQuestionService = async ({
     questionTitle,
     questionContent,
-    answerText,}) =>{
+    answerText,}) => {
         const userPrompt =`You review whether a forum ANSWER draft adresses the QUESTION (relevance and completenes of engagement - not whether the answer is factually correct).
         
         QUESTION TITLE:
@@ -76,16 +77,22 @@ export const assessAnswerAgainstQuestionService = async ({
                  "note":"one short sentence"}
             Rules:
             - level: "strong" if the draft clearly engages with the question; "partial" if somewhat related but missing key parts of the ask; "weak" if mostly off-topic or too vague.
-            -note: one SVGComponentTransferFunctionElement, plain language, no markdown, under 200 characters. Frame as fit/relevance, not grading.`;
+            - note: one sentence, plain language, no markdown, under 200 characters. Frame as fit/relevance, not grading.`;
 
         try{
-            const raw =await fetchGeminiJsonTextRespnse(userPrompt);
-            const parsed=parseJosnObjectFromGeminiText(res);
+            const raw =await fetchGeminiJsonTextResponse(userPrompt);
+            const parsed=parseJosnObjectFromGeminiText(raw);
             const levelRaw=parsed?.level;
             const noteRaw=parsed?.note;
-            const level = levelRaw==='strong' || levelRaw==='partial'||levelRaw==='weak'? levelRaw:'partial';
-            const note= typeof noteRaw==='string' && noteRaw.trim() ? noteRaw.trim().slice(0, 200)
-                       : 'Could not summarize fit: treat this as a partial match.';
+            const level = 
+                levelRaw === 'strong' || levelRaw === 'partial' || levelRaw === 'weak'
+                ? levelRaw 
+                : 'partial';
+            const note =
+                 typeof noteRaw === 'string' && noteRaw.trim() 
+                    ? noteRaw.trim().slice(0, 200)
+                    : 'Could not summarize fit: treat this as a partial match.';
+                    
             return {level, note};
 
         }catch (error){

@@ -1,10 +1,14 @@
 import { StatusCodes } from "http-status-codes";
-
-import { body } from 'express-validator';
 import {
   getQuestionsService,
   getSingleQuestionService,
+
 } from "../service/question.service.js";
+
+import {
+  assessAnswerAgainstQuestionService,
+
+} from "../service/geminiTextCoach.service.js"
 
 /**
  * GET /api/questions
@@ -51,11 +55,20 @@ export const getSingleQuestionController = async (req, res, next) => {
 };
 
 
+/**
+ * 
+ * Handles AI relevance assessment of an answer draft against a question.
+ */
+
 export const assessAnswerAgainstQuestionController = async (req ,res, next) =>{
   try{
     const { questionHash }= req.params;
     const { answerText }= req.body;
-    const { question } = await getSingleQuestionService({questionHash});
+    const { question } = await getSingleQuestionService({
+      questionHash,
+       includeAnswers: false,
+      });
+
     const data = await assessAnswerAgainstQuestionService({
       questionTitle: question.title,
       questionContent: question.content,

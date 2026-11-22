@@ -1,4 +1,4 @@
-import { param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
 export const getQuestionsValidation = [
@@ -38,8 +38,9 @@ export const assessAnswerAgainstQuestionValidation=[
     .withMessage('Answer text is required')
     .isString()
     .withMessage('Answer text must be a string')
+    .trim()
     .isLength({min: 20})
-    .withMessage('Answer text must be at least 20 characters for a meaningful fit check')
-    .trim(),
+    .withMessage('Answer text must be at least 20 characters for a meaningful fit check'),
+    
   validationErrorHandler  
 ]
