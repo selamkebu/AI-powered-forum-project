@@ -21,7 +21,7 @@ export default function Layout() {
   /** Navbar title: keep in sync with routes in `App.jsx`. */
   const getTitle = () => {
     const path = location.pathname;
-    if (path === '/dashboard') return 'Home';
+    if (path === "/dashboard") return isDashboardSearch ? "Forum" : "Home";
     if (path === '/my-questions') return 'Your topics';
     if (path === '/questions/ask') return 'Ask a question';
     if (path.startsWith('/question/')) return 'Discussion';

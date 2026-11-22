@@ -4,14 +4,35 @@ import {
   getQuestionsController,
   getSingleQuestionController,
   assessAnswerAgainstQuestionController,
+  generateQuestionDraftCoachController,
+  getSimilarQuestionsController,
+  searchQuestionsSemanticController,
+  createQuestionController,
 } from "../controller/question.controller.js";
 import {
   getQuestionsValidation,
   singleQuestionValidation,
-  assessAnswerAgainstQuestionValidation
+  assessAnswerAgainstQuestionValidation,
+  generateQuestionDraftCoachValidation,
+  getSimilarQuestionsValidation,
+  searchQuestionsValidation,
+  createQuestionValidation,
 } from "../validations/question.validation.js";
 
 const router = express.Router();
+
+/**
+ * T-09: Create Question API
+ * @route POST /api/questions
+ * @desc Create a new question
+ * @access Private
+ */
+router.post(
+  "/",
+  authenticateUser,
+  createQuestionValidation,
+  createQuestionController,
+);
 
 /**
  * @route GET /api/questions
@@ -25,7 +46,42 @@ router.get(
   getQuestionsController,
 );
 
-//implement your other routes here (declare /search before /:questionHash)
+/**
+ * @route GET /api/questions/search
+ * @desc Semantic search questions using vector cosine similarity
+ * @access Private
+ * NOTE: Must be declared BEFORE /:questionHash so Express does not treat "search" as an ID
+ */
+router.get(
+  "/search",
+  authenticateUser,
+  searchQuestionsValidation,
+  searchQuestionsSemanticController,
+);
+
+/**
+ * @route POST /api/questions/draft-coach
+ * @desc Generate AI suggestions for a question draft
+ * @access Private
+ */
+router.post(
+  "/draft-coach",
+  authenticateUser,
+  generateQuestionDraftCoachValidation,
+  generateQuestionDraftCoachController,
+);
+
+/**
+ * @route GET /api/questions/:questionHash/similar
+ * @desc Get similar questions
+ * @access Private
+ */
+router.get(
+  "/:questionHash/similar",
+  authenticateUser,
+  getSimilarQuestionsValidation,
+  getSimilarQuestionsController,
+);
 
 router.get(
   "/:questionHash",
