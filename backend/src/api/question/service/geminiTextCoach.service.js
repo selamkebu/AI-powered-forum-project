@@ -10,7 +10,7 @@ import { GoogleGenAI } from "@google/genai";
 
 const GEMINI_TEXT_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-lite";
 
-const geminiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 /**
  * Strip optional markdown fance and parse JSON object from model text
