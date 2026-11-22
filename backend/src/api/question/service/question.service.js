@@ -1,5 +1,8 @@
+import { randomBytes } from "node:crypto";
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
+import { saveQuestionEmbedding } from "./vector.service.js";
+
 
 const ANSWERS_LIMIT = 100;
 const QUESTIONS_LIMIT = 100;
@@ -317,5 +320,60 @@ export const getSimilarQuestionsService = async ({
       query: null,
       questionHash,
     },
+  };
+};
+
+
+
+/**
+ * T-09: Create Question API
+ *
+ * Creates a question and generates its Gemini embedding.
+ * If Gemini fails, the question is still created.
+ */
+export const createQuestionWithVectorService = async ({
+  userId,
+  title,
+  content,
+}) => {
+  // Step 1: Generate a random 16-character hash
+  const questionHash = randomBytes(8).toString("hex");
+
+  // Step 2: Insert the new question
+  const sql = `
+    INSERT INTO questions
+      (question_hash, user_id, title, content)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  const result = await safeExecute(sql, [
+    questionHash,
+    userId,
+    title,
+    content,
+  ]);
+
+  // Step 3: Retrieve the new question ID
+  const questionId = result.insertId;
+
+
+  // Step 4: Generate and save the embedding
+  try {
+    await saveQuestionEmbedding(questionId, title);
+  } catch (error) {
+    console.error(
+      `Failed to persist vector for question ${questionId}:`,
+      error
+    );
+  }
+
+
+  // Step 5: Return the created question
+  return {
+    id: questionId,
+    questionHash,
+    title,
+    content,
+    userId,
   };
 };

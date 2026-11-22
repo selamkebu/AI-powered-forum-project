@@ -31,10 +31,7 @@ export const singleQuestionValidation = [
  * Validate AI question draft coach input.
  */
 export const generateQuestionDraftCoachValidation = [
-  body("title")
-    .optional()
-    .isString()
-    .withMessage("Title must be a string"),
+  body("title").optional().isString().withMessage("Title must be a string"),
 
   body("content")
     .isString()
@@ -67,6 +64,30 @@ export const getSimilarQuestionsValidation = [
     .isFloat({ min: 0, max: 1 })
     .withMessage("threshold must be between 0 and 1")
     .toFloat(),
+
+  validationErrorHandler,
+];
+
+/**
+ * T-09: Create Question API
+ * POST /api/questions
+ */
+export const createQuestionValidation = [
+  body("title")
+    .isString()
+    .withMessage("Title must be a string")
+    .bail()
+    .trim()
+    .isLength({ min: 5, max: 255 })
+    .withMessage("Title must be between 5 and 255 characters"),
+
+  body("content")
+    .isString()
+    .withMessage("Content must be a string")
+    .bail()
+    .trim()
+    .isLength({ min: 10, max: 10000 })
+    .withMessage("Content must be between 10 and 10000 characters"),
 
   validationErrorHandler,
 ];

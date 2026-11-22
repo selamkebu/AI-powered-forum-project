@@ -1,10 +1,13 @@
 import { StatusCodes } from "http-status-codes";
+
 import {
   getQuestionsService,
   getSingleQuestionService,
   getSimilarQuestionsService,
+  createQuestionWithVectorService,
 } from "../service/question.service.js";
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
+
 
 /**
  * GET /api/questions
@@ -98,6 +101,28 @@ export const getSimilarQuestionsController = async (req, res, next) => {
       success: true,
       message: "Similar questions fetched successfully",
       ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+export const createQuestionController = async (req, res, next) => {
+  try {
+    const { title, content } = req.body;
+    const userId = req.user.id;
+
+    const question = await createQuestionWithVectorService({
+      userId,
+      title,
+      content,
+    });
+
+    return res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: "Question posted successfully.",
+      data: question,
     });
   } catch (error) {
     next(error);
