@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { safeExecute } from "../../../../db/config.js";
+import { ServiceUnavailableError } from "../../../utils/errors/index.js";
 
 /**
  * Initialize Gemini Client
@@ -7,7 +8,9 @@ import { safeExecute } from "../../../../db/config.js";
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not defined in environment variables");
+    throw new ServiceUnavailableError(
+      "AI search service is temporarily unavailable"
+    );
   }
   return new GoogleGenAI({ apiKey });
 };
@@ -15,56 +18,98 @@ const getGeminiClient = () => {
 /**
  * Generate vector embedding using Gemini API
  * @param {string} text - Text to embed
- * @param {'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT'} taskType
+ * @param {'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT'} taskType - Required task type
  * @returns {Promise<number[]>} Array of floating-point numbers
  */
-export const generateEmbedding = async (text, taskType = "RETRIEVAL_QUERY") => {
-  const ai = getGeminiClient();
-  const model = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
-
-  const response = await ai.models.embedContent({
-    model,
-    contents: text,
-    config: {
-      taskType,
-    },
-  });
-
-  const values = response.embedding?.values || response.embeddings?.[0]?.values;
-
-  if (!values || !Array.isArray(values)) {
+export const generateEmbedding = async (text, taskType) => {
+  if (!taskType) {
     throw new Error(
-      "Failed to extract embedding values from Gemini API response",
+      "taskType is required for generateEmbedding ('RETRIEVAL_QUERY' or 'RETRIEVAL_DOCUMENT')"
     );
   }
 
-  return values;
+  try {
+    const ai = getGeminiClient();
+    const model = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
+
+    const response = await ai.models.embedContent({
+      model,
+      contents: text,
+      config: {
+        taskType,
+      },
+    });
+
+    const values =
+      response.embedding?.values || response.embeddings?.[0]?.values;
+
+    if (!values || !Array.isArray(values)) {
+      throw new ServiceUnavailableError(
+        "AI search service is temporarily unavailable"
+      );
+    }
+
+    return values;
+  } catch (error) {
+    if (error instanceof ServiceUnavailableError) {
+      throw error;
+    }
+    console.error("Gemini embedding error:", error.message);
+    throw new ServiceUnavailableError(
+      "AI search service is temporarily unavailable"
+    );
+  }
+};
+
+/**
+ * Parse and validate stored JSON embedding
+ * Single canonical definition for the codebase
+ * @param {any} embedding
+ * @returns {number[] | null}
+ */
+export const parseEmbedding = (embedding) => {
+  try {
+    const parsed =
+      typeof embedding === "string" ? JSON.parse(embedding) : embedding;
+
+    if (
+      !Array.isArray(parsed) ||
+      parsed.length === 0 ||
+      !parsed.every((value) => Number.isFinite(Number(value)))
+    ) {
+      return null;
+    }
+
+    return parsed.map(Number);
+  } catch {
+    return null;
+  }
 };
 
 /**
  * Calculate Cosine Similarity between two vector arrays:
  * Formula: (A . B) / (||A|| * ||B||)
- * @param {number[]} vecA
- * @param {number[]} vecB
+ * Single canonical definition for the codebase
+ * @param {number[]} a
+ * @param {number[]} b
  * @returns {number} Score between -1 and 1
  */
-export const cosineSimilarity = (vecA, vecB) => {
-  if (!vecA || !vecB || vecA.length !== vecB.length || vecA.length === 0) {
-    return 0;
-  }
+export const cosineSimilarity = (a, b) => {
+  if (!a || !b || a.length !== b.length) return -1;
 
   let dotProduct = 0;
-  let normA = 0;
-  let normB = 0;
+  let magnitudeA = 0;
+  let magnitudeB = 0;
 
-  for (let i = 0; i < vecA.length; i++) {
-    dotProduct += vecA[i] * vecB[i];
-    normA += vecA[i] * vecA[i];
-    normB += vecB[i] * vecB[i];
+  for (let i = 0; i < a.length; i++) {
+    dotProduct += a[i] * b[i];
+    magnitudeA += a[i] * a[i];
+    magnitudeB += b[i] * b[i];
   }
 
-  if (normA === 0 || normB === 0) return 0;
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+  if (magnitudeA === 0 || magnitudeB === 0) return -1;
+
+  return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
 };
 
 /**
@@ -79,7 +124,7 @@ export const storeQuestionVector = async (
   questionId,
   sourceText,
   embedding,
-  status = "ready",
+  status = "ready"
 ) => {
   const sql = `
     INSERT INTO question_vectors (question_id, source_text, embedding, status)

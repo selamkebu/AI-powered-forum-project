@@ -1,6 +1,10 @@
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
-import { generateEmbedding } from "./vector.service.js";
+import {
+  generateEmbedding,
+  parseEmbedding,
+  cosineSimilarity,
+} from "./vector.service.js";
 
 const ANSWERS_LIMIT = 100;
 const QUESTIONS_LIMIT = 100;
@@ -160,54 +164,50 @@ export const getSingleQuestionService = async (questionHash) => {
   };
 };
 
-//n
+/**
+ * Helper to clamp and validate k: default 5, min 1, max 20
+ */
+const resolveK = (val) => {
+  const parsed = Number(val);
+  if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 20) {
+    return parsed;
+  }
+  const envVal = Number(process.env.RECOMMEND_K);
+  if (Number.isInteger(envVal) && envVal >= 1 && envVal <= 20) {
+    return envVal;
+  }
+  return 5;
+};
+
+/**
+ * Helper to validate threshold: default 0.75, range 0-1
+ * Prevents empty RECOMMEND_THRESHOLD= from evaluating to 0
+ */
+const resolveThreshold = (val) => {
+  if (val !== undefined && val !== null && val !== "") {
+    const parsed = Number(val);
+    if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+      return parsed;
+    }
+  }
+  const envRaw = process.env.RECOMMEND_THRESHOLD;
+  if (envRaw !== undefined && envRaw !== null && String(envRaw).trim() !== "") {
+    const envParsed = Number(envRaw);
+    if (!Number.isNaN(envParsed) && envParsed >= 0 && envParsed <= 1) {
+      return envParsed;
+    }
+  }
+  return 0.75;
+};
 
 // T-11: Find Similar Questions
-
-const parseEmbedding = (embedding) => {
-  try {
-    const parsed =
-      typeof embedding === "string" ? JSON.parse(embedding) : embedding;
-
-    if (
-      !Array.isArray(parsed) ||
-      parsed.length === 0 ||
-      !parsed.every((value) => Number.isFinite(Number(value)))
-    ) {
-      return null;
-    }
-
-    return parsed.map(Number);
-  } catch {
-    return null;
-  }
-};
-
-const cosineSimilarity = (a, b) => {
-  if (!a || !b || a.length !== b.length) return -1;
-
-  let dotProduct = 0;
-  let magnitudeA = 0;
-  let magnitudeB = 0;
-
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    magnitudeA += a[i] * a[i];
-    magnitudeB += b[i] * b[i];
-  }
-
-  if (magnitudeA === 0 || magnitudeB === 0) return -1;
-
-  return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
-};
-
 export const getSimilarQuestionsService = async ({
   questionHash,
-  k = Number(process.env.RECOMMEND_K) || 5,
-  threshold = Number(process.env.RECOMMEND_THRESHOLD ?? 0.75),
+  k,
+  threshold,
 }) => {
-  k = Number(k);
-  threshold = Number(threshold);
+  const effectiveK = resolveK(k);
+  const effectiveThreshold = resolveThreshold(threshold);
 
   const sourceRows = await safeExecute(
     `SELECT q.question_id, qv.embedding
@@ -246,14 +246,22 @@ export const getSimilarQuestionsService = async ({
         score: cosineSimilarity(sourceEmbedding, embedding),
       };
     })
-    .filter((question) => question !== null && question.score >= threshold)
+    .filter(
+      (question) => question !== null && question.score >= effectiveThreshold,
+    )
     .sort((a, b) => b.score - a.score)
-    .slice(0, k);
+    .slice(0, effectiveK);
 
   if (similarQuestions.length === 0) {
     return {
       data: [],
-      meta: { total: 0, k, threshold, query: null, questionHash },
+      meta: {
+        total: 0,
+        k: effectiveK,
+        threshold: effectiveThreshold,
+        query: null,
+        questionHash,
+      },
     };
   }
 
@@ -309,25 +317,26 @@ export const getSimilarQuestionsService = async ({
     data,
     meta: {
       total: data.length,
-      k,
-      threshold,
+      k: effectiveK,
+      threshold: effectiveThreshold,
       query: null,
       questionHash,
     },
   };
 };
+
 /**
  * T-11: Semantic Search Questions (GET /api/questions/search)
  */
 export const searchQuestionsSemanticService = async ({
   query,
-  k = Number(process.env.RECOMMEND_K) || 5,
-  threshold = Number(process.env.RECOMMEND_THRESHOLD ?? 0.75),
+  k,
+  threshold,
 }) => {
-  k = Number(k);
-  threshold = Number(threshold);
+  const effectiveK = resolveK(k);
+  const effectiveThreshold = resolveThreshold(threshold);
 
-  // 1. Generate query embedding via Gemini
+  // 1. Generate query embedding via Gemini (explicit taskType: 'RETRIEVAL_QUERY')
   const queryVector = await generateEmbedding(query, "RETRIEVAL_QUERY");
 
   // 2. Fetch all ready question embeddings from DB
@@ -339,18 +348,24 @@ export const searchQuestionsSemanticService = async ({
   if (!vectorRows || vectorRows.length === 0) {
     return {
       data: [],
-      meta: { total: 0, k, threshold, query, questionHash: null },
+      meta: {
+        total: 0,
+        k: effectiveK,
+        threshold: effectiveThreshold,
+        query,
+        questionHash: null,
+      },
     };
   }
 
-  // 3. Compute cosine similarity reusing Anwar's helpers (parseEmbedding & cosineSimilarity)
+  // 3. Compute cosine similarity
   const scored = [];
   for (const row of vectorRows) {
     const vector = parseEmbedding(row.embedding);
     if (!vector) continue;
 
     const score = cosineSimilarity(queryVector, vector);
-    if (score >= threshold) {
+    if (score >= effectiveThreshold) {
       scored.push({
         questionId: row.question_id,
         score: Number(score.toFixed(6)),
@@ -360,12 +375,18 @@ export const searchQuestionsSemanticService = async ({
 
   // 4. Sort descending and limit to top K
   scored.sort((a, b) => b.score - a.score);
-  const topMatches = scored.slice(0, k);
+  const topMatches = scored.slice(0, effectiveK);
 
   if (topMatches.length === 0) {
     return {
       data: [],
-      meta: { total: 0, k, threshold, query, questionHash: null },
+      meta: {
+        total: 0,
+        k: effectiveK,
+        threshold: effectiveThreshold,
+        query,
+        questionHash: null,
+      },
     };
   }
 
@@ -422,8 +443,8 @@ export const searchQuestionsSemanticService = async ({
     data,
     meta: {
       total: data.length,
-      k,
-      threshold,
+      k: effectiveK,
+      threshold: effectiveThreshold,
       query,
       questionHash: null,
     },
