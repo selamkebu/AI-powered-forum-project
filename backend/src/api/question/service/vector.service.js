@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { safeExecute } from "../../../../db/config.js";
 
@@ -9,9 +8,15 @@ import { safeExecute } from "../../../../db/config.js";
  * @param {string} taskType - Gemini embedding task type
  * @returns {Promise<number[]>}
  */
+let geminiClient = null;
+const getGeminiClient = () => {
+  geminiClient ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  return geminiClient;
+};
+// Read model configuration when the function runs.
 export const generateEmbedding = async (
   text,
-  taskType = "RETRIEVAL_DOCUMENT"
+  taskType = "RETRIEVAL_DOCUMENT",
 ) => {
   if (typeof text !== "string" || !text.trim()) {
     throw new Error("Embedding text must be a non-empty string");
@@ -21,15 +26,10 @@ export const generateEmbedding = async (
     throw new Error("GEMINI_API_KEY is not configured");
   }
 
-  // Read model configuration when the function runs.
   const embeddingModel =
     process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-  });
-
-  const response = await ai.models.embedContent({
+  const response = await getGeminiClient().models.embedContent({
     model: embeddingModel,
     contents: text.trim(),
     config: {
@@ -60,24 +60,18 @@ export const generateEmbedding = async (
  * @param {string} title
  * @returns {Promise<string>} ready or failed
  */
-export const saveQuestionEmbedding = async (
-  questionId,
-  title
-) => {
+export const saveQuestionEmbedding = async (questionId, title) => {
   let embedding = [];
   let status = "failed";
 
   try {
-    embedding = await generateEmbedding(
-      title,
-      "RETRIEVAL_DOCUMENT"
-    );
+    embedding = await generateEmbedding(title, "RETRIEVAL_DOCUMENT");
 
     status = "ready";
   } catch (error) {
     console.error(
       `Embedding failed for question ${questionId}:`,
-      error.message
+      error.message,
     );
   }
 
@@ -89,12 +83,7 @@ export const saveQuestionEmbedding = async (
        source_text = VALUES(source_text),
        embedding = VALUES(embedding),
        status = VALUES(status)`,
-    [
-      questionId,
-      title,
-      JSON.stringify(embedding),
-      status,
-    ]
+    [questionId, title, JSON.stringify(embedding), status],
   );
 
   return status;
