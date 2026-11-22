@@ -1,5 +1,6 @@
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
+import { generateEmbedding } from "./vector.service.js";
 
 const ANSWERS_LIMIT = 100;
 const QUESTIONS_LIMIT = 100;
@@ -215,7 +216,7 @@ export const getSimilarQuestionsService = async ({
        ON q.question_id = qv.question_id
      WHERE q.question_hash = ? AND qv.status = 'ready'
      LIMIT 1`,
-    [questionHash]
+    [questionHash],
   );
 
   if (sourceRows.length === 0) {
@@ -232,7 +233,7 @@ export const getSimilarQuestionsService = async ({
     `SELECT question_id, embedding
      FROM question_vectors
      WHERE question_id != ? AND status = 'ready'`,
-    [sourceRows[0].question_id]
+    [sourceRows[0].question_id],
   );
 
   const similarQuestions = vectorRows
@@ -245,9 +246,7 @@ export const getSimilarQuestionsService = async ({
         score: cosineSimilarity(sourceEmbedding, embedding),
       };
     })
-    .filter(
-      (question) => question !== null && question.score >= threshold
-    )
+    .filter((question) => question !== null && question.score >= threshold)
     .sort((a, b) => b.score - a.score)
     .slice(0, k);
 
@@ -278,12 +277,10 @@ export const getSimilarQuestionsService = async ({
      FROM questions q
      INNER JOIN users u ON q.user_id = u.user_id
      WHERE q.question_id IN (${placeholders})`,
-    questionIds
+    questionIds,
   );
 
-  const detailsMap = new Map(
-    detailRows.map((row) => [row.id, row])
-  );
+  const detailsMap = new Map(detailRows.map((row) => [row.id, row]));
 
   const data = similarQuestions
     .map((similarQuestion) => {
@@ -316,6 +313,119 @@ export const getSimilarQuestionsService = async ({
       threshold,
       query: null,
       questionHash,
+    },
+  };
+};
+/**
+ * T-11: Semantic Search Questions (GET /api/questions/search)
+ */
+export const searchQuestionsSemanticService = async ({
+  query,
+  k = Number(process.env.RECOMMEND_K) || 5,
+  threshold = Number(process.env.RECOMMEND_THRESHOLD ?? 0.75),
+}) => {
+  k = Number(k);
+  threshold = Number(threshold);
+
+  // 1. Generate query embedding via Gemini
+  const queryVector = await generateEmbedding(query, "RETRIEVAL_QUERY");
+
+  // 2. Fetch all ready question embeddings from DB
+  const vectorRows = await safeExecute(
+    `SELECT question_id, embedding FROM question_vectors WHERE status = 'ready'`,
+    [],
+  );
+
+  if (!vectorRows || vectorRows.length === 0) {
+    return {
+      data: [],
+      meta: { total: 0, k, threshold, query, questionHash: null },
+    };
+  }
+
+  // 3. Compute cosine similarity reusing Anwar's helpers (parseEmbedding & cosineSimilarity)
+  const scored = [];
+  for (const row of vectorRows) {
+    const vector = parseEmbedding(row.embedding);
+    if (!vector) continue;
+
+    const score = cosineSimilarity(queryVector, vector);
+    if (score >= threshold) {
+      scored.push({
+        questionId: row.question_id,
+        score: Number(score.toFixed(6)),
+      });
+    }
+  }
+
+  // 4. Sort descending and limit to top K
+  scored.sort((a, b) => b.score - a.score);
+  const topMatches = scored.slice(0, k);
+
+  if (topMatches.length === 0) {
+    return {
+      data: [],
+      meta: { total: 0, k, threshold, query, questionHash: null },
+    };
+  }
+
+  // 5. Fetch question details for matching IDs
+  const questionIds = topMatches.map((m) => m.questionId);
+  const placeholders = questionIds.map(() => "?").join(", ");
+
+  const detailRows = await safeExecute(
+    `SELECT
+       q.question_id AS id,
+       q.question_hash AS questionHash,
+       q.title,
+       q.content,
+       q.created_at AS createdAt,
+       q.updated_at AS updatedAt,
+       u.user_id AS authorId,
+       u.first_name AS firstName,
+       u.last_name AS lastName,
+       (SELECT COUNT(*)
+        FROM answers a
+        WHERE a.question_id = q.question_id) AS answerCount
+     FROM questions q
+     INNER JOIN users u ON q.user_id = u.user_id
+     WHERE q.question_id IN (${placeholders})`,
+    questionIds,
+  );
+
+  const detailsMap = new Map(detailRows.map((row) => [row.id, row]));
+
+  const data = topMatches
+    .map((match) => {
+      const q = detailsMap.get(match.questionId);
+      if (!q) return null;
+
+      return {
+        id: q.id,
+        questionHash: q.questionHash,
+        title: q.title,
+        content: q.content,
+        answerCount: Number(q.answerCount),
+        createdAt: q.createdAt,
+        updatedAt: q.updatedAt,
+        author: {
+          id: q.authorId,
+          firstName: q.firstName,
+          lastName: q.lastName,
+        },
+        score: match.score,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    data,
+    meta: {
+      total: data.length,
+      k,
+      threshold,
+      query,
+      questionHash: null,
     },
   };
 };
