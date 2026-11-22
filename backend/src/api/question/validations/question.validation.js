@@ -1,4 +1,4 @@
-import { param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
 export const getQuestionsValidation = [
@@ -8,6 +8,7 @@ export const getQuestionsValidation = [
     .withMessage("search must be a string")
     .isLength({ max: 200 })
     .withMessage("search must be at most 200 characters long"),
+
   query("mine")
     .optional()
     .isIn(["true", "false", "1", "0"])
@@ -26,11 +27,33 @@ export const singleQuestionValidation = [
   validationErrorHandler,
 ];
 
+/**
+ * Validate AI question draft coach input.
+ */
+export const generateQuestionDraftCoachValidation = [
+  body("title")
+    .optional()
+    .isString()
+    .withMessage("Title must be a string"),
+
+  body("content")
+    .isString()
+    .withMessage("Question content must be a string")
+    .trim()
+    .notEmpty()
+    .withMessage("Question content is required"),
+
+  validationErrorHandler,
+];
+
+/**
+ * Validate similar questions request.
+ */
 export const getSimilarQuestionsValidation = [
   param("questionHash")
     .matches(/^[a-f0-9]{16}$/)
     .withMessage(
-      "Question hash must be exactly 16 lowercase hexadecimal characters"
+      "Question hash must be exactly 16 lowercase hexadecimal characters",
     ),
 
   query("k")

@@ -91,7 +91,7 @@ function PostQuestion() {
     setCoachFeedback(null);
 
     try {
-     
+
 
       const response = await questionService.createQuestion({
         title: formData.title.trim(),
@@ -125,8 +125,8 @@ function PostQuestion() {
     setCoachFeedback(null);
 
     try {
-    
-      
+
+
 
       const response = await apiClient.post("/api/questions/draft-coach", {
         title: formData.title.trim(),
