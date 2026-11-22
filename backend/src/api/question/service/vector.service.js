@@ -2,9 +2,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { safeExecute } from "../../../../db/config.js";
 
-const EMBEDDING_MODEL =
-  process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
-
 /**
  * Generate an embedding from text using Gemini.
  *
@@ -24,12 +21,16 @@ export const generateEmbedding = async (
     throw new Error("GEMINI_API_KEY is not configured");
   }
 
+  // Read model configuration when the function runs.
+  const embeddingModel =
+    process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
+
   const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
   });
 
   const response = await ai.models.embedContent({
-    model: EMBEDDING_MODEL,
+    model: embeddingModel,
     contents: text.trim(),
     config: {
       taskType,
@@ -50,13 +51,13 @@ export const generateEmbedding = async (
 };
 
 /**
- * Save an embedding for a question.
+ * Generate and save a question embedding.
  *
- * Creates a ready record when Gemini succeeds.
- * Creates a failed record when Gemini fails.
+ * Saves status 'ready' when Gemini succeeds.
+ * Saves status 'failed' with [] when Gemini fails.
  *
- * @param {number} questionId - Database question ID
- * @param {string} title - Question title
+ * @param {number} questionId
+ * @param {string} title
  * @returns {Promise<string>} ready or failed
  */
 export const saveQuestionEmbedding = async (

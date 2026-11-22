@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
-import { GoogleGenAI } from "@google/genai";
 import { saveQuestionEmbedding } from "./vector.service.js";
 
 
@@ -358,7 +357,18 @@ export const createQuestionWithVectorService = async ({
   const questionId = result.insertId;
 
   // Step 4: Generate and save the embedding
-  await saveQuestionEmbedding(questionId, title);
+
+  // Step 4: Generate and save the embedding
+  try {
+    await saveQuestionEmbedding(questionId, title);
+  } catch (error) {
+    console.error(
+      `Failed to persist vector for question ${questionId}:`,
+      error
+    );
+  }
+
+  // Step 5: Return the created question
 
   // Step 5: Return the created question
   return {

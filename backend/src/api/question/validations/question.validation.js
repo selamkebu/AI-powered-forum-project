@@ -23,7 +23,8 @@ export const singleQuestionValidation = [
       "Question hash must be exactly 16 lowercase hexadecimal characters",
     ),
 
-  validationErrorHandler,];
+  validationErrorHandler,
+];
 
 export const getSimilarQuestionsValidation = [
   param("questionHash")
@@ -48,12 +49,12 @@ export const getSimilarQuestionsValidation = [
 ];
 
 
+
 /**
  * T-09: Create Question API
  * POST /api/questions
  */
-export const createQuestionValidation = [
-  body("title")
+export const createQuestionValidation = [  body("title")
     .isString()
     .withMessage("Title must be a string")
     .bail()
@@ -61,28 +62,13 @@ export const createQuestionValidation = [
     .isLength({ min: 5, max: 255 })
     .withMessage("Title must be between 5 and 255 characters"),
 
-
-body("content")
-  .isString()
-  .withMessage("Content must be a string")
-  .bail()
-  .trim()
-  .isLength({ min: 10 })
-  .withMessage("Content must contain at least 10 characters"),
-
-
-  body("tags")
-    .optional()
-    .isArray()
-    .withMessage("Tags must be an array"),
-
-  body("tags.*")
+  body("content")
     .isString()
-    .withMessage("Each tag must be a string")
+    .withMessage("Content must be a string")
     .bail()
     .trim()
-    .notEmpty()
-    .withMessage("Tags cannot contain empty strings"),
+    .isLength({ min: 10 })
+    .withMessage("Content must contain at least 10 characters"),
 
   validationErrorHandler,
 ];
