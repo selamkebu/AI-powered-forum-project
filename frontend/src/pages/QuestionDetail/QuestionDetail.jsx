@@ -1,25 +1,25 @@
 import { useEffect, useState } from "react";
-import { data, Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import MDEditor, { commands } from "@uiw/react-md-editor";
 import { ArrowLeft, Share2, MessageSquare, Sparkles } from "lucide-react";
 import Avatar from "react-avatar";
 import {
   getSingleQuestion,
-  getSimilarQuestions,
-} from "../../services/question.service.js";
+  getRelatedQuestions,
+} from "../../services/question/question.service.js";
 import {
   assessAnswerFit,
   postAnswer,
 } from "../../services/answer/answer.service.js";
+
 import { useAuth } from "../../contexts/AuthContext";
 import styles from "./QuestionDetail.module.css";
 
 function QuestionDetail() {
   let { questionHash } = useParams();
   let navigate = useNavigate();
-  // set the question details and related question
-  let [question, setQuestion] = useState();
+  let [question, setQuestion] = useState(null);
   let [answers, setAnswers] = useState([]);
   let [related, setRelated] = useState([]);
   let [isLoading, setIsLoading] = useState(true);
@@ -34,39 +34,50 @@ function QuestionDetail() {
   let [fitError, setFitError] = useState("");
   let [fitColor, setFitColor] = useState("");
 
-  let fullName = (author) =>
-    `${author?.firstName ?? ""} ${author?.lastName ?? ""}`.trim();
+  let fullName = (author) => `${author.firstName} ${author.lastName}`.trim();
   let formatDate = (date) => new Date(date).toLocaleDateString();
   useEffect(() => {
-    // on mounting the page a single detailed question with its related questiions will be fetched
     async function mount() {
       setIsLoading(true);
+      setError("");
       try {
-        let questionData = await getSingleQuestion(questionHash);
-        let relatedData = await getRelatedQuestions(questionHash);
+        const questionData = await getSingleQuestion(questionHash);
 
         setQuestion(questionData.question);
-        setAnswers(questionData.answers);
-        setRelated(relatedData.data);
+        setAnswers(questionData.answers ?? []);
       } catch (err) {
-        setError("Failed to load question");
-      } finally {
+        setError("Failed to load question details.");
         setIsLoading(false);
+        return;
       }
+
+      try {
+        const relatedData = await getRelatedQuestions(questionHash);
+
+        setRelated(
+          Array.isArray(relatedData) ? relatedData : (relatedData?.data ?? []),
+        );
+      } catch (err) {
+        setRelated([]);
+      }
+
+      setIsLoading(false);
     }
+
     mount();
   }, [questionHash]);
-
-  // on click of the post button the answer will be posted as an answer
-
   let { user: currentUser } = useAuth();
+
+  let isOwnQuestion = question?.author.id === currentUser.id;
+  let canSubmit = answerText.trim().length >= 20;
+  // on click of the post button the answer will be posted as an answer
   async function handlePostAnswer() {
     setIsPosting(true);
 
     try {
       const newAnswer = await postAnswer(question.id, answerText);
 
-      setAnswers((prev) => [...prev, newAnswer.data]);
+      setAnswers((prev) => [...prev, newAnswer]);
       setAnswerText("");
       setFitResult(null);
     } catch (err) {
@@ -75,7 +86,7 @@ function QuestionDetail() {
       setIsPosting(false);
     }
   }
-  // on click of the check fit button, the fitness of the answer will be assessed
+
   async function handleFitCheck() {
     if (!canSubmit) return;
     setIsChecking(true);
@@ -84,12 +95,11 @@ function QuestionDetail() {
     try {
       const fitData = await assessAnswerFit(questionHash, answerText);
 
-      setFitResult(fitData.data);
-
-      // controls the color of the fit check response
-      if (fitData.level == "WEAK FIT") {
+      console.log(fitData);
+      setFitResult(fitData);
+      if (fitData.level == "weak") {
         setFitColor("red");
-      } else if (result.level == "PARTIAL FIT") {
+      } else if (fitData.level == "partial") {
         setFitColor("grey");
       } else {
         setFitColor("green");
@@ -161,7 +171,10 @@ function QuestionDetail() {
           <h2>Related Questions</h2>
 
           {related.map((relatedquestion) => (
-            <div className={`${styles.relatedQuestion}`}>
+            <div
+              key={relatedquestion.id}
+              className={`${styles.relatedQuestion}`}
+            >
               <Link
                 key={relatedquestion.id}
                 to={`/questions/${relatedquestion.questionHash}`}

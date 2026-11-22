@@ -88,6 +88,20 @@ function handleQuestionError(error) {
   }
 }
 
+//fetch a single quesion from the backend
+async function getSingleQuestion(questionHash) {
+  let response = await apiClient.get(`/api/questions/${questionHash}`);
+  return response.data;
+}
+
+// fetch the related questions from the backend
+async function getRelatedQuestions(questionHash) {
+  let response = await apiClient.get(`/api/questions/${questionHash}/similar`);
+  return response.data;
+}
+
+export { getRelatedQuestions, getSingleQuestion };
+
 export const questionService = {
   getQuestions,
   searchQuestionsSemantic,
