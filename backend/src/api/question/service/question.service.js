@@ -119,7 +119,7 @@ export const getSingleQuestionService = async (questionHash) => {
     FROM answers a
     INNER JOIN users u ON a.user_id = u.user_id
     WHERE a.question_id = ?
-    ORDER BY a.created_at ASC
+    ORDER BY a.created_at DESC
     LIMIT ${ANSWERS_LIMIT}
   `;
 
@@ -356,7 +356,6 @@ export const createQuestionWithVectorService = async ({
   // Step 3: Retrieve the new question ID
   const questionId = result.insertId;
 
-  // Step 4: Generate and save the embedding
 
   // Step 4: Generate and save the embedding
   try {
@@ -368,7 +367,6 @@ export const createQuestionWithVectorService = async ({
     );
   }
 
-  // Step 5: Return the created question
 
   // Step 5: Return the created question
   return {

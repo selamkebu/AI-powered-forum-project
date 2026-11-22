@@ -6,6 +6,9 @@ import {
   getSimilarQuestionsService,
   createQuestionWithVectorService,
 } from "../service/question.service.js";
+import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
+
+
 /**
  * GET /api/questions
  * Query: search, mine
@@ -44,6 +47,35 @@ export const getSingleQuestionController = async (req, res, next) => {
       success: true,
       message: "Question fetched successfully",
       ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/questions/draft-coach
+ * Generate AI suggestions for a question draft.
+ */
+export const generateQuestionDraftCoachController = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const { title, content } = req.body;
+
+    const result = await generateQuestionDraftCoachService({
+      title,
+      content,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Draft suggestions generated",
+      data: {
+        tips: result.tips,
+      },
     });
   } catch (error) {
     next(error);

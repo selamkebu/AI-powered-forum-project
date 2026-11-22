@@ -3,12 +3,14 @@ import { authenticateUser } from "../../../middleware/authentication.js";
 import {
   getQuestionsController,
   getSingleQuestionController,
+  generateQuestionDraftCoachController,
   getSimilarQuestionsController,
   createQuestionController,
 } from "../controller/question.controller.js";
 import {
   getQuestionsValidation,
   singleQuestionValidation,
+  generateQuestionDraftCoachValidation,
   getSimilarQuestionsValidation,
   createQuestionValidation,
 } from "../validations/question.validation.js";
@@ -40,7 +42,23 @@ router.get(
   getQuestionsController,
 );
 
-//implement your other routes here (declare /search before /:questionHash)
+/**
+ * @route POST /api/questions/draft-coach
+ * @desc Generate AI suggestions for a question draft
+ * @access Private
+ */
+router.post(
+  "/draft-coach",
+  authenticateUser,
+  generateQuestionDraftCoachValidation,
+  generateQuestionDraftCoachController,
+);
+
+/**
+ * @route GET /api/questions/:questionHash/similar
+ * @desc Get similar questions
+ * @access Private
+ */
 router.get(
   "/:questionHash/similar",
   authenticateUser,
