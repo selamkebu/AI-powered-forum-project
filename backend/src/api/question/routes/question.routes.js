@@ -6,6 +6,7 @@ import {
   generateQuestionDraftCoachController,
   getSimilarQuestionsController,
   searchQuestionsSemanticController,
+  createQuestionController,
 } from "../controller/question.controller.js";
 import {
   getQuestionsValidation,
@@ -13,9 +14,23 @@ import {
   generateQuestionDraftCoachValidation,
   getSimilarQuestionsValidation,
   searchQuestionsValidation,
+  createQuestionValidation,
 } from "../validations/question.validation.js";
 
 const router = express.Router();
+
+/**
+ * T-09: Create Question API
+ * @route POST /api/questions
+ * @desc Create a new question
+ * @access Private
+ */
+router.post(
+  "/",
+  authenticateUser,
+  createQuestionValidation,
+  createQuestionController,
+);
 
 /**
  * @route GET /api/questions

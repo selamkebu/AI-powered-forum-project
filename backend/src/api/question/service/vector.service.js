@@ -5,6 +5,7 @@ import { ServiceUnavailableError } from "../../../utils/errors/index.js";
 /**
  * Initialize Gemini Client
  */
+let geminiClient = null;
 const getGeminiClient = () => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -12,7 +13,8 @@ const getGeminiClient = () => {
       "AI search service is temporarily unavailable"
     );
   }
-  return new GoogleGenAI({ apiKey });
+  geminiClient ??= new GoogleGenAI({ apiKey });
+  return geminiClient;
 };
 
 /**
@@ -22,6 +24,10 @@ const getGeminiClient = () => {
  * @returns {Promise<number[]>} Array of floating-point numbers
  */
 export const generateEmbedding = async (text, taskType) => {
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("Embedding text must be a non-empty string");
+  }
+
   if (!taskType) {
     throw new Error(
       "taskType is required for generateEmbedding ('RETRIEVAL_QUERY' or 'RETRIEVAL_DOCUMENT')"
@@ -30,11 +36,12 @@ export const generateEmbedding = async (text, taskType) => {
 
   try {
     const ai = getGeminiClient();
-    const model = process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
+    const model =
+      process.env.GEMINI_EMBEDDING_MODEL || "gemini-embedding-001";
 
     const response = await ai.models.embedContent({
       model,
-      contents: text,
+      contents: text.trim(),
       config: {
         taskType,
       },
@@ -43,7 +50,7 @@ export const generateEmbedding = async (text, taskType) => {
     const values =
       response.embedding?.values || response.embeddings?.[0]?.values;
 
-    if (!values || !Array.isArray(values)) {
+    if (!values || !Array.isArray(values) || !values.every((v) => Number.isFinite(v))) {
       throw new ServiceUnavailableError(
         "AI search service is temporarily unavailable"
       );
@@ -98,23 +105,60 @@ export const cosineSimilarity = (a, b) => {
   if (!a || !b || a.length !== b.length) return -1;
 
   let dotProduct = 0;
-  let magnitudeA = 0;
-  let magnitudeB = 0;
+  let normA = 0;
+  let normB = 0;
 
   for (let i = 0; i < a.length; i++) {
     dotProduct += a[i] * b[i];
-    magnitudeA += a[i] * a[i];
-    magnitudeB += b[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
   }
 
-  if (magnitudeA === 0 || magnitudeB === 0) return -1;
-
-  return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
+  if (normA === 0 || normB === 0) return 0;
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 };
 
 /**
- * Store or update vector embedding in MySQL question_vectors table
- * (Fulfills checklist item: "Generate and store vector embeddings when a question is created or updated")
+ * Generate and save a question embedding (T-09).
+ *
+ * Saves status 'ready' when Gemini succeeds.
+ * Saves status 'failed' with [] when Gemini fails.
+ *
+ * @param {number} questionId
+ * @param {string} title
+ * @returns {Promise<string>} ready or failed
+ */
+export const saveQuestionEmbedding = async (questionId, title) => {
+  let embedding = [];
+  let status = "failed";
+
+  try {
+    embedding = await generateEmbedding(title, "RETRIEVAL_DOCUMENT");
+    status = "ready";
+  } catch (error) {
+    console.error(
+      `Embedding failed for question ${questionId}:`,
+      error.message,
+    );
+  }
+
+  await safeExecute(
+    `INSERT INTO question_vectors
+       (question_id, source_text, embedding, status)
+     VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       source_text = VALUES(source_text),
+       embedding = VALUES(embedding),
+       status = VALUES(status)`,
+    [questionId, title, JSON.stringify(embedding), status],
+  );
+
+  return status;
+};
+
+/**
+ * Store a question embedding directly in question_vectors (T-11).
+ *
  * @param {number} questionId
  * @param {string} sourceText
  * @param {number[]} embedding

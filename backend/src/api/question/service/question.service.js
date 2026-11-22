@@ -1,9 +1,11 @@
+import { randomBytes } from "node:crypto";
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
 import {
   generateEmbedding,
   parseEmbedding,
   cosineSimilarity,
+  saveQuestionEmbedding,
 } from "./vector.service.js";
 
 const ANSWERS_LIMIT = 100;
@@ -98,16 +100,7 @@ export const getSingleQuestionService = async (questionHash) => {
     throw new NotFoundError("Question not found");
   }
 
-  const questionData = questionRows[0];
-
-  const countSql = `
-    SELECT COUNT(*) AS total
-    FROM answers
-    WHERE question_id = ?
-  `;
-
-  const countRows = await safeExecute(countSql, [questionData.id]);
-  const answerCount = Number(countRows[0].total);
+  const question = questionRows[0];
 
   const answersSql = `
     SELECT
@@ -121,42 +114,47 @@ export const getSingleQuestionService = async (questionHash) => {
     FROM answers a
     INNER JOIN users u ON a.user_id = u.user_id
     WHERE a.question_id = ?
-    ORDER BY a.created_at DESC
+    ORDER BY a.created_at ASC
     LIMIT ${ANSWERS_LIMIT}
   `;
 
-  const answerRows = await safeExecute(answersSql, [questionData.id]);
+  const answersRows = await safeExecute(answersSql, [question.id]);
 
-  const question = {
-    id: questionData.id,
-    questionHash: questionData.questionHash,
-    title: questionData.title,
-    content: questionData.content,
-    answerCount,
-    createdAt: questionData.createdAt,
-    updatedAt: questionData.updatedAt,
-    author: {
-      id: questionData.authorId,
-      firstName: questionData.authorFirstName,
-      lastName: questionData.authorLastName,
-    },
-  };
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM answers
+    WHERE question_id = ?
+  `;
 
-  const answers = answerRows.map((answer) => ({
-    id: answer.id,
-    content: answer.content,
-    createdAt: answer.createdAt,
-    updatedAt: answer.updatedAt,
-    author: {
-      id: answer.authorId,
-      firstName: answer.authorFirstName,
-      lastName: answer.authorLastName,
-    },
-  }));
+  const countRows = await safeExecute(countSql, [question.id]);
+  const answerCount = Number(countRows[0]?.total ?? 0);
 
   return {
-    question,
-    answers,
+    question: {
+      id: question.id,
+      questionHash: question.questionHash,
+      title: question.title,
+      content: question.content,
+      answerCount,
+      createdAt: question.createdAt,
+      updatedAt: question.updatedAt,
+      author: {
+        id: question.authorId,
+        firstName: question.authorFirstName,
+        lastName: question.authorLastName,
+      },
+    },
+    answers: answersRows.map((a) => ({
+      id: a.id,
+      content: a.content,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+      author: {
+        id: a.authorId,
+        firstName: a.authorFirstName,
+        lastName: a.authorLastName,
+      },
+    })),
     answersMeta: {
       limit: ANSWERS_LIMIT,
       total: answerCount,
@@ -448,5 +446,56 @@ export const searchQuestionsSemanticService = async ({
       query,
       questionHash: null,
     },
+  };
+};
+
+/**
+ * T-09: Create Question API
+ *
+ * Creates a question and generates its Gemini embedding.
+ * If Gemini fails, the question is still created.
+ */
+export const createQuestionWithVectorService = async ({
+  userId,
+  title,
+  content,
+}) => {
+  // Step 1: Generate a random 16-character hash
+  const questionHash = randomBytes(8).toString("hex");
+
+  // Step 2: Insert the new question
+  const sql = `
+    INSERT INTO questions
+      (question_hash, user_id, title, content)
+    VALUES (?, ?, ?, ?)
+  `;
+
+  const result = await safeExecute(sql, [
+    questionHash,
+    userId,
+    title,
+    content,
+  ]);
+
+  // Step 3: Retrieve the new question ID
+  const questionId = result.insertId;
+
+  // Step 4: Generate and save the embedding
+  try {
+    await saveQuestionEmbedding(questionId, title);
+  } catch (error) {
+    console.error(
+      `Failed to persist vector for question ${questionId}:`,
+      error,
+    );
+  }
+
+  // Step 5: Return the created question
+  return {
+    id: questionId,
+    questionHash,
+    title,
+    content,
+    userId,
   };
 };
