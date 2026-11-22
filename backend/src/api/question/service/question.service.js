@@ -1,6 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
+import { GoogleGenAI } from "@google/genai";
+import { saveQuestionEmbedding } from "./vector.service.js";
+
 
 const ANSWERS_LIMIT = 100;
 const QUESTIONS_LIMIT = 100;
@@ -322,23 +325,22 @@ export const getSimilarQuestionsService = async ({
 };
 
 
+
 /**
  * T-09: Create Question API
- * Creates a new question in the database.
  *
- * @param {Object} params
- * @param {number} params.userId - Authenticated user ID
- * @param {string} params.title - Question title
- * @param {string} params.content - Question description
- * @returns {Promise<Object>} Created question
+ * Creates a question and generates its Gemini embedding.
+ * If Gemini fails, the question is still created.
  */
 export const createQuestionWithVectorService = async ({
   userId,
   title,
   content,
 }) => {
+  // Step 1: Generate a random 16-character hash
   const questionHash = randomBytes(8).toString("hex");
 
+  // Step 2: Insert the new question
   const sql = `
     INSERT INTO questions
       (question_hash, user_id, title, content)
@@ -352,8 +354,15 @@ export const createQuestionWithVectorService = async ({
     content,
   ]);
 
+  // Step 3: Retrieve the new question ID
+  const questionId = result.insertId;
+
+  // Step 4: Generate and save the embedding
+  await saveQuestionEmbedding(questionId, title);
+
+  // Step 5: Return the created question
   return {
-    id: result.insertId,
+    id: questionId,
     questionHash,
     title,
     content,

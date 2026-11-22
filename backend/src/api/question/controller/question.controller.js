@@ -75,28 +75,21 @@ export const getSimilarQuestionsController = async (req, res, next) => {
   }
 };
 
- /**
- * T-09: Create Question API
- * POST /api/questions
- * Access: Private
- */
+
 export const createQuestionController = async (req, res, next) => {
   try {
-    const { title, description } = req.body;
-
-    // Get user ID from authentication middleware
+    const { title, content } = req.body;
     const userId = req.user.id;
 
-    // Create question using the service
     const question = await createQuestionWithVectorService({
       userId,
-      title: title.trim(),
-      content: description.trim(),
+      title,
+      content,
     });
 
     return res.status(StatusCodes.CREATED).json({
       success: true,
-      message: "Question created successfully.",
+      message: "Question posted successfully.",
       data: question,
     });
   } catch (error) {

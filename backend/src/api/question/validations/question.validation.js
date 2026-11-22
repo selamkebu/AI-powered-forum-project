@@ -61,13 +61,15 @@ export const createQuestionValidation = [
     .isLength({ min: 5, max: 255 })
     .withMessage("Title must be between 5 and 255 characters"),
 
-  body("description")
-    .isString()
-    .withMessage("Description must be a string")
-    .bail()
-    .trim()
-    .isLength({ min: 10 })
-    .withMessage("Description must contain at least 10 characters"),
+
+body("content")
+  .isString()
+  .withMessage("Content must be a string")
+  .bail()
+  .trim()
+  .isLength({ min: 10 })
+  .withMessage("Content must contain at least 10 characters"),
+
 
   body("tags")
     .optional()
