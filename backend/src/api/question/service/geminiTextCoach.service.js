@@ -1,6 +1,6 @@
 
 import { param } from 'express-validator';
-import { ServiceUnavailableError } from '../../../utils/index.js';
+import { ServiceUnavailableError } from '../../../utils/errors/index';
 import { registerController } from './../../auth/controller/auth.controller';
 
 import { GoogleGenAI } from "@google/genai";
