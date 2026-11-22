@@ -4,10 +4,10 @@ import {
   getQuestionsService,
   getSingleQuestionService,
   getSimilarQuestionsService,
+  searchQuestionsSemanticService,
   createQuestionWithVectorService,
 } from "../service/question.service.js";
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
-
 
 /**
  * GET /api/questions
@@ -107,6 +107,29 @@ export const getSimilarQuestionsController = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /api/questions/search
+ * Query params: query (required), k (optional), threshold (optional)
+ */
+export const searchQuestionsSemanticController = async (req, res, next) => {
+  try {
+    const { query, k, threshold } = req.query;
+
+    const result = await searchQuestionsSemanticService({
+      query,
+      k,
+      threshold,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Semantic search completed successfully",
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const createQuestionController = async (req, res, next) => {
   try {

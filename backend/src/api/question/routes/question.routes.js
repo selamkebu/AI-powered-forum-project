@@ -5,6 +5,7 @@ import {
   getSingleQuestionController,
   generateQuestionDraftCoachController,
   getSimilarQuestionsController,
+  searchQuestionsSemanticController,
   createQuestionController,
 } from "../controller/question.controller.js";
 import {
@@ -12,6 +13,7 @@ import {
   singleQuestionValidation,
   generateQuestionDraftCoachValidation,
   getSimilarQuestionsValidation,
+  searchQuestionsValidation,
   createQuestionValidation,
 } from "../validations/question.validation.js";
 
@@ -40,6 +42,19 @@ router.get(
   authenticateUser,
   getQuestionsValidation,
   getQuestionsController,
+);
+
+/**
+ * @route GET /api/questions/search
+ * @desc Semantic search questions using vector cosine similarity
+ * @access Private
+ * NOTE: Must be declared BEFORE /:questionHash so Express does not treat "search" as an ID
+ */
+router.get(
+  "/search",
+  authenticateUser,
+  searchQuestionsValidation,
+  searchQuestionsSemanticController,
 );
 
 /**
