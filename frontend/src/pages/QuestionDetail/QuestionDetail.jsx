@@ -177,7 +177,7 @@ function QuestionDetail() {
             >
               <Link
                 key={relatedquestion.id}
-                to={`/questions/${relatedquestion.questionHash}`}
+                to={`/question/${relatedquestion.questionHash}`}
               >
                 <p className={`${styles.relatedtitle}`}>
                   {relatedquestion.title}
