@@ -1,10 +1,22 @@
+import { randomBytes } from "node:crypto";
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
-import { randomBytes } from "crypto";
+
+import {
+  generateEmbedding,
+  parseEmbedding,
+  cosineSimilarity,
+  saveQuestionEmbedding,
+} from "./vector.service.js";
+
 const ANSWERS_LIMIT = 100;
 const QUESTIONS_LIMIT = 100;
 
 const escapeLike = (value) => value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+
+// ======================================================
+// 1. GET ALL QUESTIONS
+// ======================================================
 
 export const getQuestionsService = async ({
   userId,
@@ -20,6 +32,7 @@ export const getQuestionsService = async ({
   }
 
   const keyword = search.trim();
+
   if (keyword) {
     const pattern = `%${escapeLike(keyword)}%`;
     where.push("(q.title LIKE ? OR q.content LIKE ?)");
@@ -69,6 +82,10 @@ export const getQuestionsService = async ({
   };
 };
 
+// ======================================================
+// 2. GET SINGLE QUESTION
+// ======================================================
+
 export const getSingleQuestionService = async (questionHash) => {
   const questionSql = `
     SELECT
@@ -93,16 +110,7 @@ export const getSingleQuestionService = async (questionHash) => {
     throw new NotFoundError("Question not found");
   }
 
-  const questionData = questionRows[0];
-
-  const countSql = `
-    SELECT COUNT(*) AS total
-    FROM answers
-    WHERE question_id = ?
-  `;
-
-  const countRows = await safeExecute(countSql, [questionData.id]);
-  const answerCount = Number(countRows[0].total);
+  const question = questionRows[0];
 
   const answersSql = `
     SELECT
@@ -116,42 +124,49 @@ export const getSingleQuestionService = async (questionHash) => {
     FROM answers a
     INNER JOIN users u ON a.user_id = u.user_id
     WHERE a.question_id = ?
-    ORDER BY a.created_at DESC
+    ORDER BY a.created_at ASC
     LIMIT ${ANSWERS_LIMIT}
   `;
 
-  const answerRows = await safeExecute(answersSql, [questionData.id]);
+  const answersRows = await safeExecute(answersSql, [question.id]);
 
-  const question = {
-    id: questionData.id,
-    questionHash: questionData.questionHash,
-    title: questionData.title,
-    content: questionData.content,
-    answerCount,
-    createdAt: questionData.createdAt,
-    updatedAt: questionData.updatedAt,
-    author: {
-      id: questionData.authorId,
-      firstName: questionData.authorFirstName,
-      lastName: questionData.authorLastName,
-    },
-  };
+  const countSql = `
+    SELECT COUNT(*) AS total
+    FROM answers
+    WHERE question_id = ?
+  `;
 
-  const answers = answerRows.map((answer) => ({
-    id: answer.id,
-    content: answer.content,
-    createdAt: answer.createdAt,
-    updatedAt: answer.updatedAt,
-    author: {
-      id: answer.authorId,
-      firstName: answer.authorFirstName,
-      lastName: answer.authorLastName,
-    },
-  }));
+  const countRows = await safeExecute(countSql, [question.id]);
+  const answerCount = Number(countRows[0]?.total ?? 0);
 
   return {
-    question,
-    answers,
+    question: {
+      id: question.id,
+      questionHash: question.questionHash,
+      title: question.title,
+      content: question.content,
+      answerCount,
+      createdAt: question.createdAt,
+      updatedAt: question.updatedAt,
+      author: {
+        id: question.authorId,
+        firstName: question.authorFirstName,
+        lastName: question.authorLastName,
+      },
+    },
+
+    answers: answersRows.map((a) => ({
+      id: a.id,
+      content: a.content,
+      createdAt: a.createdAt,
+      updatedAt: a.updatedAt,
+      author: {
+        id: a.authorId,
+        firstName: a.authorFirstName,
+        lastName: a.authorLastName,
+      },
+    })),
+
     answersMeta: {
       limit: ANSWERS_LIMIT,
       total: answerCount,
@@ -159,54 +174,72 @@ export const getSingleQuestionService = async (questionHash) => {
   };
 };
 
-//n
+// ======================================================
+// 3. HELPER: RESOLVE K
+// ======================================================
 
-// T-11: Find Similar Questions
+/**
+ * Default: 5
+ * Minimum: 1
+ * Maximum: 20
+ */
+const resolveK = (val) => {
+  const parsed = Number(val);
 
-const parseEmbedding = (embedding) => {
-  try {
-    const parsed =
-      typeof embedding === "string" ? JSON.parse(embedding) : embedding;
+  if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 20) {
+    return parsed;
+  }
 
-    if (
-      !Array.isArray(parsed) ||
-      parsed.length === 0 ||
-      !parsed.every((value) => Number.isFinite(Number(value)))
-    ) {
-      return null;
+  const envVal = Number(process.env.RECOMMEND_K);
+
+  if (Number.isInteger(envVal) && envVal >= 1 && envVal <= 20) {
+    return envVal;
+  }
+
+  return 5;
+};
+
+// ======================================================
+// 4. HELPER: RESOLVE THRESHOLD
+// ======================================================
+
+/**
+ * Default: 0.75
+ * Range: 0 to 1
+ */
+const resolveThreshold = (val) => {
+  if (val !== undefined && val !== null && val !== "") {
+    const parsed = Number(val);
+
+    if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 1) {
+      return parsed;
     }
-
-    return parsed.map(Number);
-  } catch {
-    return null;
-  }
-};
-
-const cosineSimilarity = (a, b) => {
-  if (!a || !b || a.length !== b.length) return -1;
-
-  let dotProduct = 0;
-  let magnitudeA = 0;
-  let magnitudeB = 0;
-
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    magnitudeA += a[i] * a[i];
-    magnitudeB += b[i] * b[i];
   }
 
-  if (magnitudeA === 0 || magnitudeB === 0) return -1;
+  const envRaw = process.env.RECOMMEND_THRESHOLD;
 
-  return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
+  if (envRaw !== undefined && envRaw !== null && String(envRaw).trim() !== "") {
+    const envParsed = Number(envRaw);
+
+    if (!Number.isNaN(envParsed) && envParsed >= 0 && envParsed <= 1) {
+      return envParsed;
+    }
+  }
+
+  return 0.75;
 };
+
+// ======================================================
+// 5. GET SIMILAR QUESTIONS
+// ======================================================
 
 export const getSimilarQuestionsService = async ({
   questionHash,
-  k = Number(process.env.RECOMMEND_K) || 5,
-  threshold = Number(process.env.RECOMMEND_THRESHOLD ?? 0.75),
+  k,
+  threshold,
 }) => {
-  k = Number(k);
-  threshold = Number(threshold);
+  const effectiveK = resolveK(k);
+  const effectiveThreshold = resolveThreshold(threshold);
 
   const sourceRows = await safeExecute(
     `SELECT q.question_id, qv.embedding
@@ -215,7 +248,7 @@ export const getSimilarQuestionsService = async ({
        ON q.question_id = qv.question_id
      WHERE q.question_hash = ? AND qv.status = 'ready'
      LIMIT 1`,
-    [questionHash]
+    [questionHash],
   );
 
   if (sourceRows.length === 0) {
@@ -232,12 +265,13 @@ export const getSimilarQuestionsService = async ({
     `SELECT question_id, embedding
      FROM question_vectors
      WHERE question_id != ? AND status = 'ready'`,
-    [sourceRows[0].question_id]
+    [sourceRows[0].question_id],
   );
 
   const similarQuestions = vectorRows
     .map((row) => {
       const embedding = parseEmbedding(row.embedding);
+
       if (!embedding) return null;
 
       return {
@@ -246,19 +280,26 @@ export const getSimilarQuestionsService = async ({
       };
     })
     .filter(
-      (question) => question !== null && question.score >= threshold
+      (question) => question !== null && question.score >= effectiveThreshold,
     )
     .sort((a, b) => b.score - a.score)
-    .slice(0, k);
+    .slice(0, effectiveK);
 
   if (similarQuestions.length === 0) {
     return {
       data: [],
-      meta: { total: 0, k, threshold, query: null, questionHash },
+      meta: {
+        total: 0,
+        k: effectiveK,
+        threshold: effectiveThreshold,
+        query: null,
+        questionHash,
+      },
     };
   }
 
   const questionIds = similarQuestions.map((question) => question.id);
+
   const placeholders = questionIds.map(() => "?").join(", ");
 
   const detailRows = await safeExecute(
@@ -278,16 +319,15 @@ export const getSimilarQuestionsService = async ({
      FROM questions q
      INNER JOIN users u ON q.user_id = u.user_id
      WHERE q.question_id IN (${placeholders})`,
-    questionIds
+    questionIds,
   );
 
-  const detailsMap = new Map(
-    detailRows.map((row) => [row.id, row])
-  );
+  const detailsMap = new Map(detailRows.map((row) => [row.id, row]));
 
   const data = similarQuestions
     .map((similarQuestion) => {
       const question = detailsMap.get(similarQuestion.id);
+
       if (!question) return null;
 
       return {
@@ -312,34 +352,196 @@ export const getSimilarQuestionsService = async ({
     data,
     meta: {
       total: data.length,
-      k,
-      threshold,
+      k: effectiveK,
+      threshold: effectiveThreshold,
       query: null,
       questionHash,
     },
   };
 };
 
+// ======================================================
+// 6. SEMANTIC SEARCH QUESTIONS
+// ======================================================
 
-// Create and publish a new question.
-export const createQuestionService = async ({
+/**
+ * T-11: Semantic Search Questions
+ * GET /api/questions/search
+ */
+export const searchQuestionsSemanticService = async ({
+  query,
+  k,
+  threshold,
+}) => {
+  const effectiveK = resolveK(k);
+  const effectiveThreshold = resolveThreshold(threshold);
+
+  // Step 1: Generate query embedding.
+  const queryVector = await generateEmbedding(query, "RETRIEVAL_QUERY");
+
+  // Step 2: Get all ready question embeddings.
+  const vectorRows = await safeExecute(
+    `SELECT question_id, embedding
+     FROM question_vectors
+     WHERE status = 'ready'`,
+    [],
+  );
+
+  if (!vectorRows || vectorRows.length === 0) {
+    return {
+      data: [],
+      meta: {
+        total: 0,
+        k: effectiveK,
+        threshold: effectiveThreshold,
+        query,
+        questionHash: null,
+      },
+    };
+  }
+
+  // Step 3: Calculate cosine similarity.
+  const scored = [];
+
+  for (const row of vectorRows) {
+    const vector = parseEmbedding(row.embedding);
+
+    if (!vector) continue;
+
+    const score = cosineSimilarity(queryVector, vector);
+
+    if (score >= effectiveThreshold) {
+      scored.push({
+        questionId: row.question_id,
+        score: Number(score.toFixed(6)),
+      });
+    }
+  }
+
+  // Step 4: Sort and select top K results.
+  scored.sort((a, b) => b.score - a.score);
+
+  const topMatches = scored.slice(0, effectiveK);
+
+  if (topMatches.length === 0) {
+    return {
+      data: [],
+      meta: {
+        total: 0,
+        k: effectiveK,
+        threshold: effectiveThreshold,
+        query,
+        questionHash: null,
+      },
+    };
+  }
+
+  // Step 5: Fetch question details.
+  const questionIds = topMatches.map((match) => match.questionId);
+
+  const placeholders = questionIds.map(() => "?").join(", ");
+
+  const detailRows = await safeExecute(
+    `SELECT
+       q.question_id AS id,
+       q.question_hash AS questionHash,
+       q.title,
+       q.content,
+       q.created_at AS createdAt,
+       q.updated_at AS updatedAt,
+       u.user_id AS authorId,
+       u.first_name AS firstName,
+       u.last_name AS lastName,
+       (SELECT COUNT(*)
+        FROM answers a
+        WHERE a.question_id = q.question_id) AS answerCount
+     FROM questions q
+     INNER JOIN users u ON q.user_id = u.user_id
+     WHERE q.question_id IN (${placeholders})`,
+    questionIds,
+  );
+
+  const detailsMap = new Map(detailRows.map((row) => [row.id, row]));
+
+  const data = topMatches
+    .map((match) => {
+      const question = detailsMap.get(match.questionId);
+
+      if (!question) return null;
+
+      return {
+        id: question.id,
+        questionHash: question.questionHash,
+        title: question.title,
+        content: question.content,
+        answerCount: Number(question.answerCount),
+        createdAt: question.createdAt,
+        updatedAt: question.updatedAt,
+        author: {
+          id: question.authorId,
+          firstName: question.firstName,
+          lastName: question.lastName,
+        },
+        score: match.score,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    data,
+    meta: {
+      total: data.length,
+      k: effectiveK,
+      threshold: effectiveThreshold,
+      query,
+      questionHash: null,
+    },
+  };
+};
+
+// ======================================================
+// 7. CREATE QUESTION WITH VECTOR EMBEDDING
+// ======================================================
+
+/**
+ * T-09: Create Question API
+ *
+ * Creates a question and generates its Gemini embedding.
+ * If Gemini fails, the question is still created.
+ */
+export const createQuestionWithVectorService = async ({
   userId,
   title,
   content,
 }) => {
-  // Generate a unique 16-character question hash.
+  // Step 1: Generate a random 16-character question hash.
   const questionHash = randomBytes(8).toString("hex");
 
-  // Insert the question into MySQL.
-  const result = await safeExecute(
-    `INSERT INTO questions
+  // Step 2: Insert the question into MySQL.
+  const sql = `
+    INSERT INTO questions
       (question_hash, user_id, title, content)
-     VALUES (?, ?, ?, ?)`,
-    [questionHash, userId, title, content],
-  );
+    VALUES (?, ?, ?, ?)
+  `;
 
+  const result = await safeExecute(sql, [questionHash, userId, title, content]);
+
+  // Step 3: Get the new question ID.
+  const questionId = result.insertId;
+
+  // Step 4: Generate and save the question embedding.
+  try {
+    await saveQuestionEmbedding(questionId, title);
+  } catch (error) {
+    console.error(
+      `Failed to persist vector for question ${questionId}:`,
+      error,
+    );
+  }
+
+  // Step 5: Return the created question.
   return {
-    id: result.insertId,
+    id: questionId,
     questionHash,
     title,
     content,

@@ -1,21 +1,26 @@
 import express from "express";
 import { authenticateUser } from "../../../middleware/authentication.js";
+
 import {
   getQuestionsController,
   getSingleQuestionController,
   generateQuestionDraftCoachController,
   getSimilarQuestionsController,
+  searchQuestionsSemanticController,
   createQuestionController,
 } from "../controller/question.controller.js";
+
 import {
   getQuestionsValidation,
   singleQuestionValidation,
   generateQuestionDraftCoachValidation,
   getSimilarQuestionsValidation,
+  searchQuestionsValidation,
   createQuestionValidation,
 } from "../validations/question.validation.js";
 
 const router = express.Router();
+
 /**
  * @route POST /api/questions
  * @desc Create and publish a new question
@@ -28,10 +33,9 @@ router.post(
   createQuestionController,
 );
 
-
 /**
  * @route GET /api/questions
- * @desc List questions (optional ?search=keyword, ?mine=true)
+ * @desc List questions
  * @access Private
  */
 router.get(
@@ -39,6 +43,18 @@ router.get(
   authenticateUser,
   getQuestionsValidation,
   getQuestionsController,
+);
+
+/**
+ * @route GET /api/questions/search
+ * @desc Semantic search questions using vector cosine similarity
+ * @access Private
+ */
+router.get(
+  "/search",
+  authenticateUser,
+  searchQuestionsValidation,
+  searchQuestionsSemanticController,
 );
 
 /**
@@ -65,6 +81,11 @@ router.get(
   getSimilarQuestionsController,
 );
 
+/**
+ * @route GET /api/questions/:questionHash
+ * @desc Get a single question
+ * @access Private
+ */
 router.get(
   "/:questionHash",
   authenticateUser,

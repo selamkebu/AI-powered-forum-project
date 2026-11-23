@@ -1,10 +1,13 @@
 import { StatusCodes } from "http-status-codes";
+
 import {
   getQuestionsService,
   getSingleQuestionService,
   getSimilarQuestionsService,
-  createQuestionService,
+  searchQuestionsSemanticService,
+  createQuestionWithVectorService,
 } from "../service/question.service.js";
+
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
 
 /**
@@ -53,13 +56,8 @@ export const getSingleQuestionController = async (req, res, next) => {
 
 /**
  * POST /api/questions/draft-coach
- * Generate AI suggestions for a question draft.
  */
-export const generateQuestionDraftCoachController = async (
-  req,
-  res,
-  next
-) => {
+export const generateQuestionDraftCoachController = async (req, res, next) => {
   try {
     const { title, content } = req.body;
 
@@ -82,7 +80,6 @@ export const generateQuestionDraftCoachController = async (
 
 /**
  * GET /api/questions/:questionHash/similar
- * Query: k, threshold
  */
 export const getSimilarQuestionsController = async (req, res, next) => {
   try {
@@ -106,20 +103,44 @@ export const getSimilarQuestionsController = async (req, res, next) => {
 };
 
 /**
+ * GET /api/questions/search
+ */
+export const searchQuestionsSemanticController = async (req, res, next) => {
+  try {
+    const { query, k, threshold } = req.query;
+
+    const result = await searchQuestionsSemanticService({
+      query,
+      k,
+      threshold,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Semantic search completed successfully",
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * POST /api/questions
  * Create and publish a new question.
  */
 export const createQuestionController = async (req, res, next) => {
   try {
     const { title, content } = req.body;
+    const userId = req.user.id;
 
-    const question = await createQuestionService({
-      userId: req.user.id,
+    const question = await createQuestionWithVectorService({
+      userId,
       title,
       content,
     });
 
-    res.status(StatusCodes.CREATED).json({
+    return res.status(StatusCodes.CREATED).json({
       success: true,
       message: "Question posted successfully.",
       data: question,
