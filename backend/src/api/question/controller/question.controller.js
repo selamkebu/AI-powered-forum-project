@@ -3,6 +3,7 @@ import {
   getQuestionsService,
   getSingleQuestionService,
   getSimilarQuestionsService,
+  createQuestionService,
 } from "../service/question.service.js";
 import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
 
@@ -98,6 +99,30 @@ export const getSimilarQuestionsController = async (req, res, next) => {
       success: true,
       message: "Similar questions fetched successfully",
       ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * POST /api/questions
+ * Create and publish a new question.
+ */
+export const createQuestionController = async (req, res, next) => {
+  try {
+    const { title, content } = req.body;
+
+    const question = await createQuestionService({
+      userId: req.user.id,
+      title,
+      content,
+    });
+
+    res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: "Question posted successfully.",
+      data: question,
     });
   } catch (error) {
     next(error);

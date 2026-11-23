@@ -1,6 +1,6 @@
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
-
+import { randomBytes } from "crypto";
 const ANSWERS_LIMIT = 100;
 const QUESTIONS_LIMIT = 100;
 
@@ -317,5 +317,32 @@ export const getSimilarQuestionsService = async ({
       query: null,
       questionHash,
     },
+  };
+};
+
+
+// Create and publish a new question.
+export const createQuestionService = async ({
+  userId,
+  title,
+  content,
+}) => {
+  // Generate a unique 16-character question hash.
+  const questionHash = randomBytes(8).toString("hex");
+
+  // Insert the question into MySQL.
+  const result = await safeExecute(
+    `INSERT INTO questions
+      (question_hash, user_id, title, content)
+     VALUES (?, ?, ?, ?)`,
+    [questionHash, userId, title, content],
+  );
+
+  return {
+    id: result.insertId,
+    questionHash,
+    title,
+    content,
+    userId,
   };
 };

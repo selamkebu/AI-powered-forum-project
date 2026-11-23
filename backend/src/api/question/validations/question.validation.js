@@ -70,3 +70,28 @@ export const getSimilarQuestionsValidation = [
 
   validationErrorHandler,
 ];
+   
+/**
+ * Validate new question publishing input.
+ */
+export const createQuestionValidation = [
+  body("title")
+    .isString()
+    .withMessage("Question title must be a string")
+    .trim()
+    .notEmpty()
+    .withMessage("Question title is required")
+    .isLength({ min: 5, max: 255 })
+    .withMessage("Question title must be between 5 and 255 characters"),
+
+  body("content")
+    .isString()
+    .withMessage("Question content must be a string")
+    .trim()
+    .notEmpty()
+    .withMessage("Question content is required")
+    .isLength({ min: 10 })
+    .withMessage("Question content must be at least 10 characters"),
+
+  validationErrorHandler,
+];

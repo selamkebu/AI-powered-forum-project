@@ -5,15 +5,29 @@ import {
   getSingleQuestionController,
   generateQuestionDraftCoachController,
   getSimilarQuestionsController,
+  createQuestionController,
 } from "../controller/question.controller.js";
 import {
   getQuestionsValidation,
   singleQuestionValidation,
   generateQuestionDraftCoachValidation,
   getSimilarQuestionsValidation,
+  createQuestionValidation,
 } from "../validations/question.validation.js";
 
 const router = express.Router();
+/**
+ * @route POST /api/questions
+ * @desc Create and publish a new question
+ * @access Private
+ */
+router.post(
+  "/",
+  authenticateUser,
+  createQuestionValidation,
+  createQuestionController,
+);
+
 
 /**
  * @route GET /api/questions
