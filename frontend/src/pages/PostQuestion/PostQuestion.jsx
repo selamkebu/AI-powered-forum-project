@@ -240,7 +240,7 @@ function PostQuestion() {
               className={styles.submitButton}
               onClick={() => {
                 if (publishedQuestionHash) {
-                  navigate(`/questions/${publishedQuestionHash}`);
+                  navigate(`/question/${publishedQuestionHash}`);
                 } else {
                   navigate("/dashboard");
                 }
