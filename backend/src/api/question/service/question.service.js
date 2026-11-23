@@ -76,11 +76,7 @@ export const getQuestionsService = async ({
   };
 };
 
-export const getSingleQuestionService = async ({
-  questionHash, 
-  includeAnswers = true}) => {
-  const normalizedAnswerLimit=100;
-
+export const getSingleQuestionService = async (questionHash) => {
   const questionSql = `
     SELECT
       q.question_id AS id,
@@ -91,13 +87,11 @@ export const getSingleQuestionService = async ({
       q.updated_at AS updatedAt,
       u.user_id AS authorId,
       u.first_name AS authorFirstName,
-      u.last_name AS authorLastName,
-      COUNT(DISTINCT a.answer_id) as answerCount
+      u.last_name AS authorLastName
     FROM questions q
-    JOIN users u ON u.user_id = q.user_id
-    LEFT JOIN answers a ON question_id =q.Question_id
+    INNER JOIN users u ON q.user_id = u.user_id
     WHERE q.question_hash = ?
-    GROUP BY q.question_id, u.user_id
+    LIMIT 1
   `;
 
   const questionRows = await safeExecute(questionSql, [questionHash]);
@@ -106,14 +100,7 @@ export const getSingleQuestionService = async ({
     throw new NotFoundError("Question not found");
   }
 
-  if(!includeAnswers){
-    return{
-      question: questionRows[0],
-    };
-  }
-
   const question = questionRows[0];
-  const questionId=question.id;
 
   const answersSql = `
     SELECT
@@ -125,10 +112,10 @@ export const getSingleQuestionService = async ({
       u.first_name AS authorFirstName,
       u.last_name AS authorLastName
     FROM answers a
-    INNER JOIN users u ON u.user_id = a.user_id
+    INNER JOIN users u ON a.user_id = u.user_id
     WHERE a.question_id = ?
-    ORDER BY a.created_at DESC
-    LIMIT ${normalizedAnswerLimit}
+    ORDER BY a.created_at ASC
+    LIMIT ${ANSWERS_LIMIT}
   `;
 
   const answersRows = await safeExecute(answersSql, [question.id]);
@@ -148,16 +135,15 @@ export const getSingleQuestionService = async ({
       questionHash: question.questionHash,
       title: question.title,
       content: question.content,
-      answerCount: answerCount,
+      answerCount,
       createdAt: question.createdAt,
       updatedAt: question.updatedAt,
-      author:{
-        id:question.userId,
-        firstName: question.firstName,
-        lastName: question.lastName,
+      author: {
+        id: question.authorId,
+        firstName: question.authorFirstName,
+        lastName: question.authorLastName,
       },
     },
- 
     answers: answersRows.map((a) => ({
       id: a.id,
       content: a.content,
@@ -170,8 +156,8 @@ export const getSingleQuestionService = async ({
       },
     })),
     answersMeta: {
-      limit: normalizedAnswerLimit,
-      total: answersRows.length,
+      limit: ANSWERS_LIMIT,
+      total: answerCount,
     },
   };
 };

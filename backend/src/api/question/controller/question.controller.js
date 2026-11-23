@@ -7,12 +7,10 @@ import {
   searchQuestionsSemanticService,
   createQuestionWithVectorService,
 } from "../service/question.service.js";
-import { generateQuestionDraftCoachService } from "../service/geminiTextCoach.service.js";
-
 import {
+  generateQuestionDraftCoachService,
   assessAnswerAgainstQuestionService,
-
-} from "../service/geminiTextCoach.service.js"
+} from "../service/geminiTextCoach.service.js";
 
 /**
  * GET /api/questions
@@ -46,8 +44,7 @@ export const getSingleQuestionController = async (req, res, next) => {
   try {
     const { questionHash } = req.params;
 
-     
-    const result = await getSingleQuestionService({questionHash,  includeAnswers: false});
+    const result = await getSingleQuestionService(questionHash);
 
     res.status(StatusCodes.OK).json({
       success: true,
@@ -59,38 +56,36 @@ export const getSingleQuestionController = async (req, res, next) => {
   }
 };
 
-
 /**
- * 
+ * POST /api/questions/:questionHash/answer-fit
  * Handles AI relevance assessment of an answer draft against a question.
  */
+export const assessAnswerAgainstQuestionController = async (
+  req,
+  res,
+  next,
+) => {
+  try {
+    const { questionHash } = req.params;
+    const { answerText } = req.body;
 
-export const assessAnswerAgainstQuestionController = async (req ,res, next) =>{
-  try{
-    const { questionHash }= req.params;
-    const { answerText }= req.body;
-    const { question } = await getSingleQuestionService({
-      questionHash,
-       includeAnswers: false,
-      });
+    const { question } = await getSingleQuestionService(questionHash);
 
     const data = await assessAnswerAgainstQuestionService({
       questionTitle: question.title,
       questionContent: question.content,
       answerText,
-      });
+    });
 
     res.status(StatusCodes.OK).json({
       success: true,
-      message: 'Answer fit assessed',
+      message: "Answer fit assessed",
       data,
     });
-  }catch(error){
+  } catch (error) {
     next(error);
   }
 };
-
-
 
 /**
  * POST /api/questions/draft-coach
@@ -99,7 +94,7 @@ export const assessAnswerAgainstQuestionController = async (req ,res, next) =>{
 export const generateQuestionDraftCoachController = async (
   req,
   res,
-  next
+  next,
 ) => {
   try {
     const { title, content } = req.body;
