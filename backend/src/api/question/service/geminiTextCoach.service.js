@@ -143,9 +143,6 @@ Rules:
  * Generates practical tips to improve a question draft.
  */
 export const generateQuestionDraftCoachService = async ({ title, content }) => {
-  const ai = getGeminiClient();
-  const model = process.env.GEMINI_TEXT_MODEL || "gemini-2.0-flash-lite";
-
   const prompt = `
 You are an experienced programming forum writing coach.
 
@@ -157,11 +154,13 @@ Evaluate:
 3. Formatting: Would code blocks, error messages, or screenshots help?
 4. Context: Are the programming language, framework, and attempted solutions explained?
 
-Title:
+<question_title>
 ${title || "No title provided"}
+</question_title>
 
-Question content:
+<question_content>
 ${content}
+</question_content>
 
 Instructions:
 - Provide 3 to 5 specific and useful improvement tips.
@@ -179,17 +178,19 @@ Instructions:
 `;
 
   try {
-    const response = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
+    const raw = await fetchGeminiJsonTextResponse(prompt);
+    const parsed = parseJsonObjectFromGeminiText(raw);
+    const tips = Array.isArray(parsed?.tips) ? parsed.tips : [];
 
-    const parsed = parseJsonObjectFromGeminiText(response?.text);
     return {
-      tips: Array.isArray(parsed?.tips) ? parsed.tips : [],
+      tips:
+        tips.length > 0
+          ? tips
+          : [
+              "Clearly describe the expected vs actual behavior.",
+              "Add relevant code snippets or error messages to help others reproduce the issue.",
+              "Specify the programming language, framework, or library versions you are using.",
+            ],
     };
   } catch (error) {
     if (error instanceof ServiceUnavailableError) {
@@ -197,7 +198,7 @@ Instructions:
     }
     console.error("generateQuestionDraftCoachService error:", error.message);
     throw new ServiceUnavailableError(
-      "AI draft coach is not configured. Please try again later.",
+      "AI draft coach is temporarily unavailable. Please try again later.",
     );
   }
 };
