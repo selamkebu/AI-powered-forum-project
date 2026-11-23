@@ -28,6 +28,28 @@ export const singleQuestionValidation = [
 ];
 
 /**
+ * Validate answer fit assessment request (T-18)
+ */
+export const assessAnswerAgainstQuestionValidation = [
+  param("questionHash")
+    .isString()
+    .withMessage("Question hash is required")
+    .matches(/^[a-f0-9]{16}$/)
+    .withMessage("Question hash must be a 16-character lowercase hex string"),
+  body("answerText")
+    .isString()
+    .withMessage("Answer text must be a string")
+    .bail()
+    .trim()
+    .isLength({ min: 20, max: 10000 })
+    .withMessage(
+      "Answer text must be between 20 and 10000 characters for a meaningful fit check",
+    ),
+
+  validationErrorHandler,
+];
+
+/**
  * Validate AI question draft coach input.
  */
 export const generateQuestionDraftCoachValidation = [

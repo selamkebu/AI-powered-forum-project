@@ -3,6 +3,7 @@ import { authenticateUser } from "../../../middleware/authentication.js";
 import {
   getQuestionsController,
   getSingleQuestionController,
+  assessAnswerAgainstQuestionController,
   generateQuestionDraftCoachController,
   getSimilarQuestionsController,
   searchQuestionsSemanticController,
@@ -11,6 +12,7 @@ import {
 import {
   getQuestionsValidation,
   singleQuestionValidation,
+  assessAnswerAgainstQuestionValidation,
   generateQuestionDraftCoachValidation,
   getSimilarQuestionsValidation,
   searchQuestionsValidation,
@@ -87,5 +89,20 @@ router.get(
   singleQuestionValidation,
   getSingleQuestionController,
 );
+
+/** 
+* @route POST /api/questions/:questionHash/answer-fit
+* @desc AI relevance check for an answer draft vs the question
+* @access Protected 
+
+*/
+router.post(
+  '/:questionHash/answer-fit',
+  authenticateUser,
+  assessAnswerAgainstQuestionValidation,
+  assessAnswerAgainstQuestionController,
+
+)
+
 
 export default router;
