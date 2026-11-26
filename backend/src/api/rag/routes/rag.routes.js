@@ -1,7 +1,7 @@
 import express from "express";
 import { authenticateUser } from "../../../middleware/authentication.js";
-import { uploadSinglePdf } from "../validations/rag.upload.config.js";
-import { createDocumentController } from "../controller/rag.controller.js";
+import { documentIdParamValidation } from "../validations/rag.validation.js";
+import {getDocumentMetaController } from "../controller/rag.controller.js";
 
 const router = express.Router();
 
@@ -10,8 +10,22 @@ const router = express.Router();
 router.post(
   "/documents",
   authenticateUser,
-  uploadSinglePdf,
-  createDocumentController,
+ // uploadSinglePdf,
+  //createDocumentController,
+);
+
+/** 
+* @route Get /api/rag/documents/:documentId
+* @desc Get RAG Document Metadata
+* @access Protected 
+
+*/
+
+router.get(
+  "/documents/:documentId",
+  authenticateUser,
+  documentIdParamValidation,
+  getDocumentMetaController,
 );
 
 export default router;
