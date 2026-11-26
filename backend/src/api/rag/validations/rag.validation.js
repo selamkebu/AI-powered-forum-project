@@ -1,0 +1,23 @@
+export const deleteDocumentValidation = (req, res, next) => {
+  const { documentId } = req.params;
+
+  if (!/^[1-9]\d*$/.test(documentId)) {
+    return res.status(400).json({
+      success: false,
+      message: "documentId must be a positive integer",
+    });
+  }
+
+  const parsedId = Number(documentId);
+
+  if (!Number.isSafeInteger(parsedId)) {
+    return res.status(400).json({
+      success: false,
+      message: "documentId must be a valid integer",
+    });
+  }
+
+  req.params.documentId = parsedId;
+
+  next();
+};
