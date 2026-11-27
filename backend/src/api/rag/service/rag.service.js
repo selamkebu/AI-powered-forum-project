@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError, BadRequestError } from "../../../utils/errors/index.js";
 
@@ -7,8 +8,10 @@ import { NotFoundError, BadRequestError } from "../../../utils/errors/index.js";
  * Absolute folder where uploaded PDFs live (RAG_UPLOAD_DIR, default uploads/rag).
  * Read at call time so it always reflects the loaded .env.
  */
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const BACKEND_ROOT = path.resolve(__dirname, "../../../../");
 export const getUploadRoot = () =>
-  path.resolve(process.cwd(), process.env.RAG_UPLOAD_DIR || "uploads/rag");
+  path.resolve(BACKEND_ROOT, process.env.RAG_UPLOAD_DIR || "uploads/rag");
 
 /**
  * Loads a document only if it belongs to the given user.
