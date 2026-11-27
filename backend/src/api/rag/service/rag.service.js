@@ -2,6 +2,16 @@ import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
 
 
+/**
+ * 
+  * Retrieves document metadata from the database using the document ID.
+ * Joins the documents table with the users table to verify the document-user relationship.
+ * Throws a NotFoundError if the document does not exist.
+ *
+ * @param {number} documentId - The unique ID of the uploaded document.
+ * @returns {Promise<object>} A promise containing the document metadata.
+ */
+
 export const getDocumentMetaService= async (doumentId) => {
   const documentSql = `
     SELECT 
@@ -28,7 +38,7 @@ export const getDocumentMetaService= async (doumentId) => {
 
   const document =documentRows[0];  
   return{
-    document:{
+    data:{
     id: document.doumentId,
     title: document.title,
     mime_type: document.mime_type,
