@@ -1,7 +1,13 @@
 import express from "express";
 import { authenticateUser } from "../../../middleware/authentication.js";
 import { uploadSinglePdf } from "../validations/rag.upload.config.js";
-import { createDocumentController } from "../controller/rag.controller.js";
+import {
+  createDocumentController, 
+  getDocumentFileController,
+  deleteDocumentController,
+} from "../controller/rag.controller.js";
+
+import { documentIdParamValidation } from "../validations/rag.validation.js";
 
 const router = express.Router();
 
@@ -12,6 +18,23 @@ router.post(
   authenticateUser,
   uploadSinglePdf,
   createDocumentController,
+);
+
+
+// GET /api/rag/documents/:documentId/file
+router.get(
+  "/documents/:documentId/file",
+  authenticateUser,
+  documentIdParamValidation,
+  getDocumentFileController,
+);
+
+// DELETE /api/rag/documents/:documentId
+router.delete(
+  "/documents/:documentId",
+  authenticateUser,
+  documentIdParamValidation,
+  deleteDocumentController,
 );
 
 export default router;
