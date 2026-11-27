@@ -2,6 +2,8 @@ import express from "express";
 import { authenticateUser } from "../../../middleware/authentication.js";
 import { uploadSinglePdf } from "../validations/rag.upload.config.js";
 import { createDocumentController } from "../controller/rag.controller.js";
+import { documentIdParamValidation } from "../validations/rag.upload.service.js";
+import { getDocumentFileController } from "../controller/rag.controller.js";
 
 const router = express.Router();
 
@@ -14,4 +16,12 @@ router.post(
   createDocumentController,
 );
 
+//GET/api/rag/documents/:documentID/file
+
+router.get(
+  "/documents/:documentId/file",
+  authenticateUser,
+  documentIdParamValidation,
+  getDocumentFileController,
+);
 export default router;
