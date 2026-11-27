@@ -4,11 +4,14 @@ import { authenticateUser } from "../../../middleware/authentication.js";
 import {
   getDocumentFileController,
   deleteDocumentController,
+  listDocumentsController,
 } from "../controller/rag.controller.js";
 
 import { documentIdParamValidation } from "../validations/rag.validation.js";
 
 const router = express.Router();
+// GET /api/rag/documents
+router.get("/documents", authenticateUser, listDocumentsController);
 
 // GET /api/rag/documents/:documentId/file
 router.get(

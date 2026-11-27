@@ -149,3 +149,26 @@ export const deleteDocumentService = async (documentId, userId) => {
     id: documentId,
   };
 };
+
+/**
+ * T-24: List all RAG documents belonging to a user.
+ */
+export const listDocumentsForUserService = async (userId) => {
+  const documents = await safeExecute(
+    `SELECT
+       document_id,
+       title,
+       mime_type,
+       byte_size,
+       status,
+       error_message,
+       created_at,
+       updated_at
+     FROM documents
+     WHERE user_id = ?
+     ORDER BY created_at DESC`,
+    [userId],
+  );
+
+  return documents;
+};

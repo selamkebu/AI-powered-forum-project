@@ -1,3 +1,5 @@
+import { StatusCodes } from "http-status-codes";
+import { listDocumentsForUserService } from "../service/rag.service.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
 import {
   assertOwnedDocument,
@@ -71,6 +73,23 @@ export const deleteDocumentController = async (req, res, next) => {
       success: true,
       message: "Document deleted successfully.",
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+/**
+ * T-24: GET /api/rag/documents
+ * Lists documents uploaded by the authenticated user.
+ */
+export const listDocumentsController = async (req, res, next) => {
+  try {
+    const documents = await listDocumentsForUserService(req.user.id);
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Documents fetched successfully.",
+      data: documents,
     });
   } catch (error) {
     next(error);
