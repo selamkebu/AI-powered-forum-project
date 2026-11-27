@@ -4,7 +4,7 @@ import { PDFParse } from "pdf-parse";
 import { db, safeExecute } from "../../../../db/config.js";
 import { BadRequestError } from "../../../utils/errors/index.js";
 import { embedTexts } from "./ragGemini.service.js";
-import { UPLOAD_ROOT } from "../validations/rag.upload.service.js";
+import { UPLOAD_ROOT } from "../validations/rag.upload.config.js";
 
 /**
  * Reads a positive integer from an environment variable.
