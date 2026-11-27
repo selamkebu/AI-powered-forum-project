@@ -2,6 +2,7 @@ import { NotFoundError } from "../../../utils/errors/index.js";
 import {
   assertOwnedDocument,
   buildPdfFileName,
+  deleteDocumentService,
   getUploadRoot,
   resolveDocumentFilePath,
 } from "../service/rag.service.js";
@@ -45,6 +46,32 @@ export const getDocumentFileController = async (req, res, next) => {
         return next(error);
       },
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * DELETE /api/rag/documents/:documentId
+ * Deletes the user's own document (PDF file + DB row).
+ */
+export const deleteDocumentController = async (req, res, next) => {
+  try {
+    // Get document ID from URL
+    const documentId = Number(req.params.documentId);
+
+    // Get authenticated user's ID
+    const userId = req.user.id;
+
+    // Call the service
+    const result = await deleteDocumentService(documentId, userId);
+
+    // Send success response
+    return res.status(200).json({
+      success: true,
+      message: "Document deleted successfully.",
+      data: result,
+    });
   } catch (error) {
     next(error);
   }
