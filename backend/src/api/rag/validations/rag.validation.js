@@ -1,4 +1,4 @@
-import { param, query } from "express-validator";
+import { body, param, query } from "express-validator";
 import { validationErrorHandler } from "../../../middleware/validation-handler.js";
 
 const documentIdRule = () =>
@@ -69,3 +69,14 @@ export const deleteDocumentValidation = (req, res, next) => {
 
   next();
 };
+export let queryDocumentBodyValidation = [
+  body("query")
+    .isString()
+    .withMessage("query must be a string")
+    .bail()
+    .trim()
+    .notEmpty()
+    .withMessage("Some query is required")
+    .bail(),
+  validationErrorHandler,
+];

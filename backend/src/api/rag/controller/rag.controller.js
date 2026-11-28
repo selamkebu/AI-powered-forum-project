@@ -7,6 +7,7 @@ import {
   deleteDocumentService,
   getUploadRoot,
   resolveDocumentFilePath,
+  queryDocumentService,
   getDocumentMetaService,
   listDocumentsForUserService,
   searchInDocumentService,
@@ -47,7 +48,7 @@ export const createDocumentController = async (req, res, next) => {
  * @param {Function} next - next function used to forward errors to the error-handling middleware.
  * @returns {Promise<void>} Sends a JSON response containing the document metadata and a success message.
  */
-export const getDocumentMetaController= async (req, res, next) => {
+export const getDocumentMetaController = async (req, res, next) => {
   try {
     const { documentId } = req.params;
 
@@ -57,14 +58,11 @@ export const getDocumentMetaController= async (req, res, next) => {
       success: true,
       message: "Document metadata fetched successfully",
       ...result,
-
-    })
-  }
-  catch(error) {
+    });
+  } catch (error) {
     next(error);
   }
 };
-
 
 /**
  * GET /api/rag/documents/:documentId/file
@@ -135,6 +133,28 @@ export const deleteDocumentController = async (req, res, next) => {
     next(error);
   }
 };
+
+export let queryDocumentController = async (req, res, next) => {
+  try {
+    let { documentId } = req.params;
+    let { query } = req.body;
+
+    let data = await queryDocumentService({
+      userId: req.user.id,
+      documentId,
+      query,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Answer and Citation",
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 /**
  * T-24: GET /api/rag/documents
  * Lists documents uploaded by the authenticated user.

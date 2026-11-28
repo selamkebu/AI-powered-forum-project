@@ -5,6 +5,7 @@ import {
   createDocumentController,
   getDocumentFileController,
   deleteDocumentController,
+  queryDocumentController,
   getDocumentMetaController,
   listDocumentsController,
   searchInDocumentController,
@@ -63,6 +64,14 @@ router.delete(
   authenticateUser,
   documentIdParamValidation,
   deleteDocumentController,
+);
+
+router.post(
+  "/documents/:documentId/query",
+  authenticateUser,
+  documentIdParamValidation,
+  queryDocumentBodyValidation,
+  queryDocumentController,
 );
 
 export default router;
