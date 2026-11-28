@@ -13,23 +13,27 @@ export default function MyQuestions() {
   const [myQuestions, setMyQuestions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [page, setPage] = useState(1);
+const [limit, setLimit] = useState(10);
+const [meta, setMeta] = useState(null);
 
   // Runs once on mount: GET /api/questions?mine=true
   useEffect(() => {
     let ignore = false; // drops the response if the page unmounts first
 
     questionService
-      .getQuestions({ mine: true })
-      // The service returns an OBJECT { questions: [...] }, so destructure it
-      // (this is what fixes "myQuestions.map is not a function").
-      .then(({ questions }) => {
-        // Extra safety: never store anything that isn't an array.
-        if (!ignore) setMyQuestions(Array.isArray(questions) ? questions : []);
-      })
+  .getQuestions({ mine: true, page, limit })
+  .then(({ questions, meta: resultMeta }) => {
+    if (!ignore) {
+      setMyQuestions(Array.isArray(questions) ? questions : []);
+      setMeta(resultMeta);
+    }
+  })
       .catch(() => {
         if (!ignore) {
           setMyQuestions([]);
           setHasError(true);
+          setMeta(null);
         }
       })
       .finally(() => {
@@ -40,7 +44,7 @@ export default function MyQuestions() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [page, limit]);
 
   // Picks what the list card shows: loading -> error -> empty -> list
   function renderContent() {
@@ -69,17 +73,52 @@ export default function MyQuestions() {
     }
 
     return (
-      <ul className={styles.questionList}>
-        {myQuestions.map((question, index) => (
-          <li
-            key={question.id ?? question.questionHash ?? index}
-            className={styles.questionItem}
-          >
-            <QuestionCard question={question} />
-          </li>
-        ))}
-      </ul>
-    );
+  <>
+    <ul className={styles.questionList}>
+      {myQuestions.map((question, index) => (
+        <li
+          key={question.id ?? question.questionHash ?? index}
+          className={styles.questionItem}
+        >
+          <QuestionCard question={question} />
+        </li>
+      ))}
+    </ul>
+
+    {meta && (
+      <div className={styles.pagination}>
+        <button
+          onClick={() => setPage((prev) => prev - 1)}
+          disabled={!meta.hasPreviousPage}
+        >
+          Previous
+        </button>
+
+        <span>
+          Page {meta.page} of {meta.totalPages}
+        </span>
+
+        <button
+          onClick={() => setPage((prev) => prev + 1)}
+          disabled={!meta.hasNextPage}
+        >
+          Next
+        </button>
+
+        <select
+          value={limit}
+          onChange={(e) => {
+            setLimit(Number(e.target.value));
+            setPage(1);
+          }}
+        >
+          <option value={10}>10 per page</option>
+          <option value={20}>20 per page</option>
+        </select>
+      </div>
+    )}
+  </>
+);
   }
 
   return (
