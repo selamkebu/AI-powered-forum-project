@@ -106,3 +106,19 @@ export const embedTexts = async (texts, taskType = "RETRIEVAL_DOCUMENT") => {
   }
   return vectors;
 };
+
+/**
+ * Embeds a single search query for cosine similarity retrieval.
+ * Reuses embedTexts so dimensionality and L2 normalization match stored chunks.
+ *
+ * @param {string} query - Non-empty search query text.
+ * @returns {Promise<number[]>} Normalized embedding vector.
+ */
+export const embedQueryText = async (query) => {
+  const trimmed = String(query ?? "").trim();
+  if (!trimmed) {
+    throw new Error("Search query must be a non-empty string");
+  }
+  const [vector] = await embedTexts([trimmed], "RETRIEVAL_QUERY");
+  return vector;
+};

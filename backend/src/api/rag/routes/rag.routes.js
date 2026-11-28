@@ -7,9 +7,13 @@ import {
   deleteDocumentController,
   getDocumentMetaController,
   listDocumentsController,
+  searchInDocumentController,
 } from "../controller/rag.controller.js";
 
-import { documentIdParamValidation } from "../validations/rag.validation.js";
+import {
+  documentIdParamValidation,
+  searchDocumentValidation,
+} from "../validations/rag.validation.js";
 
 const router = express.Router();
 // GET /api/rag/documents
@@ -19,8 +23,8 @@ router.get("/documents", authenticateUser, listDocumentsController);
 router.post(
   "/documents",
   authenticateUser,
-  // uploadSinglePdf,
-  //createDocumentController,
+  uploadSinglePdf,
+  createDocumentController,
 );
 
 /**
@@ -35,6 +39,14 @@ router.get(
   authenticateUser,
   documentIdParamValidation,
   getDocumentMetaController,
+);
+
+// GET /api/rag/documents/:documentId/search
+router.get(
+  "/documents/:documentId/search",
+  authenticateUser,
+  searchDocumentValidation,
+  searchInDocumentController,
 );
 
 // GET /api/rag/documents/:documentId/file
