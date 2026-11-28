@@ -6,8 +6,9 @@ import {
   createDocumentFromUploadService,
   deleteDocumentService,
   getUploadRoot,
-  listDocumentsForUserService,
   resolveDocumentFilePath,
+  getDocumentMetaService,
+  listDocumentsForUserService,
 } from "../service/rag.service.js";
 
 export const createDocumentController = async (req, res, next) => {
@@ -37,6 +38,32 @@ export const createDocumentController = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * Get RAG Document Metadata - feature/T-24-rag-documents branch
+ * @param {object} req - request object containing the documentId in URL parameters.
+ * @param {object} res - response object used to return the document metadata.
+ * @param {Function} next - next function used to forward errors to the error-handling middleware.
+ * @returns {Promise<void>} Sends a JSON response containing the document metadata and a success message.
+ */
+export const getDocumentMetaController= async (req, res, next) => {
+  try {
+    const { documentId } = req.params;
+
+    const result = await getDocumentMetaService(documentId);
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Document metadata fetched successfully",
+      ...result,
+
+    })
+  }
+  catch(error) {
+    next(error);
+  }
+};
+
 
 /**
  * GET /api/rag/documents/:documentId/file
