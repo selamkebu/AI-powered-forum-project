@@ -7,6 +7,7 @@ import {
   deleteDocumentService,
   getUploadRoot,
   resolveDocumentFilePath,
+  searchInDocumentService,
 } from "../service/rag.service.js";
 
 export const createDocumentController = async (req, res) => {
@@ -95,6 +96,30 @@ export const deleteDocumentController = async (req, res, next) => {
       success: true,
       message: "Document deleted successfully.",
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/rag/documents/:documentId/search
+ * Performs semantic search within the user's ready PDF and returns ranked excerpts.
+ */
+export const searchInDocumentController = async (req, res, next) => {
+  try {
+    const data = await searchInDocumentService({
+      userId: req.user.id,
+      documentId: Number(req.params.documentId),
+      query: req.query.query,
+      k: req.query.k,
+      threshold: req.query.threshold,
+    });
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Ranked chunk excerpts",
+      data,
     });
   } catch (error) {
     next(error);

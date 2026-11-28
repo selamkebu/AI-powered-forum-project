@@ -5,9 +5,13 @@ import {
   createDocumentController, 
   getDocumentFileController,
   deleteDocumentController,
+  searchInDocumentController,
 } from "../controller/rag.controller.js";
 
-import { documentIdParamValidation } from "../validations/rag.validation.js";
+import {
+  documentIdParamValidation,
+  searchDocumentValidation,
+} from "../validations/rag.validation.js";
 
 const router = express.Router();
 
@@ -20,6 +24,14 @@ router.post(
   createDocumentController,
 );
 
+
+// GET /api/rag/documents/:documentId/search
+router.get(
+  "/documents/:documentId/search",
+  authenticateUser,
+  searchDocumentValidation,
+  searchInDocumentController,
+);
 
 // GET /api/rag/documents/:documentId/file
 router.get(
