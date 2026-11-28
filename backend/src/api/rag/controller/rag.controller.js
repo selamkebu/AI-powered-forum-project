@@ -7,6 +7,7 @@ import {
   deleteDocumentService,
   getUploadRoot,
   resolveDocumentFilePath,
+  queryDocumentService,
 } from "../service/rag.service.js";
 
 export const createDocumentController = async (req, res) => {
@@ -29,7 +30,6 @@ export const createDocumentController = async (req, res) => {
     data: document,
   });
 };
-
 
 /**
  * GET /api/rag/documents/:documentId/file
@@ -95,6 +95,27 @@ export const deleteDocumentController = async (req, res, next) => {
       success: true,
       message: "Document deleted successfully.",
       data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export let queryDocumentController = async (req, res, next) => {
+  try {
+    let { documentId } = req.params;
+    let { query } = req.body;
+
+    let data = await queryDocumentService({
+      userId: req.user.id,
+      documentId,
+      query,
+    });
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Answer and Citation",
+      data,
     });
   } catch (error) {
     next(error);

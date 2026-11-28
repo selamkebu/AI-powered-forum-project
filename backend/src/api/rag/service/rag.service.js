@@ -4,9 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, safeExecute } from "../../../../db/config.js";
 import { BadRequestError, NotFoundError } from "../../../utils/errors/index.js";
-import { embedTexts } from "./ragGemini.service.js";
+import { embedTexts, answerFromRagChunksService } from "./ragGemini.service.js";
 import { UPLOAD_ROOT } from "../validations/rag.upload.config.js";
-
 
 /**
  * Reads a positive integer from an environment variable.
@@ -347,9 +346,6 @@ export const createDocumentFromUploadService = async (userId, file) => {
   return rows[0];
 };
 
-
-
-
 /**
  * Absolute folder where uploaded PDFs live (RAG_UPLOAD_DIR, default uploads/rag).
  * Read at call time so it always reflects the loaded .env.
@@ -499,3 +495,19 @@ export const deleteDocumentService = async (documentId, userId) => {
   };
 };
 
+let rag_answer_chunks = 5;
+
+export let queryDocumentService = async (userId, documentId, query) => {
+  let { results } = await searchInDocumentService({
+    userId,
+    documentId,
+    query,
+    k: rag_answer_chunks,
+  });
+  let chunks = results.map((result) => ({
+    chunkId: result.chunkId,
+    chunkIndex: result.chunkIndex,
+    text: result.excerpt,
+  }));
+  return answerFromRagChunksService(query, chunks);
+};
