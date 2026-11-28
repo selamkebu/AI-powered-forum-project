@@ -4,7 +4,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { db, safeExecute } from "../../../../db/config.js";
 import { BadRequestError, NotFoundError } from "../../../utils/errors/index.js";
-import { embedTexts } from "./ragGemini.service.js";
+import {
+  cosineSimilarity,
+  parseEmbedding,
+} from "../../question/service/vector.service.js";
+import { embedQueryText, embedTexts } from "./ragGemini.service.js";
 import { UPLOAD_ROOT } from "../validations/rag.upload.config.js";
 
 
@@ -498,4 +502,143 @@ export const deleteDocumentService = async (documentId, userId) => {
     id: documentId,
   };
 };
+
+const MAX_SEARCH_K = 50;
+
+const parseBoundedNumber = (raw, { min, max, integer = false }) => {
+  if (raw === undefined || raw === null || String(raw).trim() === "") {
+    return null;
+  }
+  const parsed = Number(raw);
+  const validType = integer ? Number.isInteger(parsed) : Number.isFinite(parsed);
+  return validType && parsed >= min && parsed <= max ? parsed : null;
+};
+
+const resolveEnvOrParam = (value, envName, bounds, fallback) =>
+  parseBoundedNumber(value, bounds) ??
+  parseBoundedNumber(process.env[envName], bounds) ??
+  fallback;
+
+/**
+ * Searches a user-owned ready document's embedded chunks using cosine similarity.
+ *
+ * @param {{ userId: number, documentId: number, query: string, k?: number, threshold?: number }} params
+ * @returns {Promise<{ query: string, results: Array<{ chunkId: number, chunkIndex: number, score: number, excerpt: string, pageStart: number|null, pageEnd: number|null }> }>}
+ */
+export const searchInDocumentService = async ({
+  userId,
+  documentId,
+  query,
+  k,
+  threshold,
+}) => {
+  const trimmedQuery = String(query ?? "").trim();
+  if (!trimmedQuery) {
+    throw new BadRequestError("Search query is required.");
+  }
+
+  const effectiveK = resolveEnvOrParam(
+    k,
+    "RAG_SEARCH_K",
+    { min: 1, max: MAX_SEARCH_K, integer: true },
+    5,
+  );
+  const effectiveThreshold = resolveEnvOrParam(
+    threshold,
+    "RAG_SEARCH_THRESHOLD",
+    { min: 0, max: 1 },
+    0.45,
+  );
+
+  // 1. Verify ownership (404 if missing or belongs to someone else)
+  const document = await assertOwnedDocument(userId, documentId);
+
+  // 2. Document must have finished chunking + embedding before search
+  if (document.status !== "ready") {
+    throw new BadRequestError(
+      `Document is not ready for search (status: ${document.status}).`,
+    );
+  }
+
+  // 3. Embed search query using RETRIEVAL_QUERY with matching chunk dimensions
+  const queryVector = await embedQueryText(trimmedQuery);
+
+  // 4. Fetch all ready chunk embeddings for this document
+  const vectorRows = await safeExecute(
+    `SELECT dcv.chunk_id, dcv.embedding
+     FROM document_chunk_vectors dcv
+     INNER JOIN document_chunks dc ON dc.chunk_id = dcv.chunk_id
+     WHERE dc.document_id = ? AND dcv.status = 'ready'`,
+    [documentId],
+  );
+
+  if (!vectorRows || vectorRows.length === 0) {
+    return {
+      query: trimmedQuery,
+      results: [],
+    };
+  }
+
+  // 5. Score chunk vectors, filter by threshold, sort descending, limit to top k
+  const topMatches = vectorRows
+    .map((row) => {
+      const chunkVector = parseEmbedding(row.embedding);
+      if (!chunkVector) return null;
+
+      const score = cosineSimilarity(queryVector, chunkVector);
+      if (!Number.isFinite(score) || score < effectiveThreshold) {
+        return null;
+      }
+
+      return {
+        chunkId: row.chunk_id,
+        score: Number(score.toFixed(6)),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, effectiveK);
+
+  if (topMatches.length === 0) {
+    return {
+      query: trimmedQuery,
+      results: [],
+    };
+  }
+
+  // 6. Hydrate excerpt text and page boundaries only for the top matching chunks
+  const topChunkIds = topMatches.map((match) => match.chunkId);
+  const placeholders = topChunkIds.map(() => "?").join(", ");
+
+  const chunkRows = await safeExecute(
+    `SELECT chunk_id, chunk_index, content, page_start, page_end
+     FROM document_chunks
+     WHERE document_id = ? AND chunk_id IN (${placeholders})`,
+    [documentId, ...topChunkIds],
+  );
+
+  const chunkMap = new Map(chunkRows.map((row) => [row.chunk_id, row]));
+
+  const results = topMatches
+    .map((match) => {
+      const chunk = chunkMap.get(match.chunkId);
+      if (!chunk) return null;
+
+      return {
+        chunkId: chunk.chunk_id,
+        chunkIndex: chunk.chunk_index,
+        score: match.score,
+        excerpt: chunk.content,
+        pageStart: chunk.page_start,
+        pageEnd: chunk.page_end,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    query: trimmedQuery,
+    results,
+  };
+};
+
 
