@@ -6,6 +6,7 @@ import {
   getSimilarQuestionsService,
   searchQuestionsSemanticService,
   createQuestionWithVectorService,
+  deleteQuestionService,
 } from "../service/question.service.js";
 import {
   generateQuestionDraftCoachService,
@@ -181,6 +182,30 @@ export const createQuestionController = async (req, res, next) => {
       success: true,
       message: "Question posted successfully.",
       data: question,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+/**
+ * DELETE /api/questions/:questionHash
+ * Allows question owners and admins to delete questions.
+ */
+export const deleteQuestionController = async (req, res, next) => {
+  try {
+    const { questionHash } = req.params;
+
+    await deleteQuestionService(
+      questionHash,
+      req.user.id,
+      req.user.role,
+    );
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Question deleted successfully.",
     });
   } catch (error) {
     next(error);

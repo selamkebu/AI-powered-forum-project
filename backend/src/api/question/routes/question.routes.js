@@ -8,6 +8,7 @@ import {
   getSimilarQuestionsController,
   searchQuestionsSemanticController,
   createQuestionController,
+  deleteQuestionController,
 } from "../controller/question.controller.js";
 import {
   getQuestionsValidation,
@@ -32,6 +33,7 @@ router.post(
   authenticateUser,
   createQuestionValidation,
   createQuestionController,
+  deleteQuestionController,
 );
 
 /**
@@ -81,6 +83,18 @@ router.get(
   authenticateUser,
   getSimilarQuestionsValidation,
   getSimilarQuestionsController,
+);
+
+
+/**
+ * DELETE /api/questions/:questionHash
+ * Delete a question (owner or admin only).
+ */
+router.delete(
+  "/:questionHash",
+  authenticateUser,
+  singleQuestionValidation,
+  deleteQuestionController,
 );
 
 router.get(

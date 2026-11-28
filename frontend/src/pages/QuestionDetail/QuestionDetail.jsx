@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import MDEditor, { commands } from "@uiw/react-md-editor";
-import { ArrowLeft, Share2, MessageSquare, Sparkles } from "lucide-react";
+import { ArrowLeft, Share2, MessageSquare, Sparkles, Trash2 } from "lucide-react";
 import Avatar from "react-avatar";
 import {
   getSingleQuestion,
   getRelatedQuestions,
+  deleteQuestion,
 } from "../../services/question/question.service.js";
 import {
   assessAnswerFit,
   postAnswer,
+  deleteAnswer,
 } from "../../services/answer/answer.service.js";
 
 import { useAuth } from "../../contexts/AuthContext";
@@ -33,6 +35,9 @@ function QuestionDetail() {
   let [isChecking, setIsChecking] = useState(false);
   let [fitError, setFitError] = useState("");
   let [fitColor, setFitColor] = useState("");
+  let [deleteMessage, setDeleteMessage] = useState("");
+  let [deleteError, setDeleteError] = useState("");
+  let [deletingId, setDeletingId] = useState(null);
 
   let fullName = (author) => `${author.firstName} ${author.lastName}`.trim();
   let formatDate = (date) => new Date(date).toLocaleDateString();
@@ -68,7 +73,10 @@ function QuestionDetail() {
   }, [questionHash]);
   let { user: currentUser } = useAuth();
 
-  let isOwnQuestion = question?.author.id === currentUser.id;
+  let isOwnQuestion =
+    !!currentUser && Number(question?.author?.id) === Number(currentUser.id);
+  let isAdmin = currentUser?.role === "admin";
+  let canDeleteQuestion = isAdmin || isOwnQuestion;
   let canSubmit = answerText.trim().length >= 20;
   // on click of the post button the answer will be posted as an answer
   async function handlePostAnswer() {
@@ -84,6 +92,47 @@ function QuestionDetail() {
       setPostError("Failed to post answer. Please try again.");
     } finally {
       setIsPosting(false);
+    }
+  }
+
+  async function handleDeleteQuestion() {
+    if (!window.confirm("Are you sure you want to delete this question and all its answers?")) {
+      return;
+    }
+
+    setDeletingId("question");
+    setDeleteError("");
+    setDeleteMessage("");
+
+    try {
+      await deleteQuestion(questionHash);
+      navigate("/dashboard", {
+        state: { message: "Question deleted successfully." },
+      });
+    } catch (err) {
+      setDeleteError(err.message || "Failed to delete question.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function handleDeleteAnswer(answerId) {
+    if (!window.confirm("Are you sure you want to delete this answer?")) {
+      return;
+    }
+
+    setDeletingId(answerId);
+    setDeleteError("");
+    setDeleteMessage("");
+
+    try {
+      await deleteAnswer(answerId);
+      setAnswers((prev) => prev.filter((answer) => answer.id !== answerId));
+      setDeleteMessage("Answer deleted successfully.");
+    } catch (err) {
+      setDeleteError(err.message || "Failed to delete answer.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -164,6 +213,17 @@ function QuestionDetail() {
               <MessageSquare size={16} />
               {answers.length} Answers
             </button>
+            {canDeleteQuestion && (
+              <button
+                type="button"
+                onClick={handleDeleteQuestion}
+                disabled={deletingId === "question"}
+                className={`${styles.postButton}`}
+              >
+                <Trash2 size={15} />
+                {deletingId === "question" ? "Deleting..." : "Delete Question"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -195,6 +255,8 @@ function QuestionDetail() {
           <h2 className={`${styles.sectiontitle}`}>
             Community Answers ({answers.length})
           </h2>
+          {deleteMessage && <p role="status">{deleteMessage}</p>}
+          {deleteError && <p className={`${styles.postError}`} role="alert">{deleteError}</p>}
           {answers.length === 0 ? (
             <div className={`${styles.noanswer}`}>
               <MessageSquare size={25} />
@@ -227,6 +289,19 @@ function QuestionDetail() {
                 <div>
                   <ReactMarkdown>{givenanswers.content}</ReactMarkdown>
                 </div>
+                {(isAdmin ||
+                  (currentUser &&
+                    Number(givenanswers.author?.id) === Number(currentUser.id))) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAnswer(givenanswers.id)}
+                    disabled={deletingId === givenanswers.id}
+                    className={`${styles.postButton}`}
+                  >
+                    <Trash2 size={15} />
+                    {deletingId === givenanswers.id ? "Deleting..." : "Delete Answer"}
+                  </button>
+                )}
               </div>
             ))
           )}

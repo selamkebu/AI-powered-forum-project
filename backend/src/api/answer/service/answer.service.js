@@ -1,4 +1,5 @@
 import { db } from '../../../../db/config.js';
+import { NotFoundError, ForbiddenError } from '../../../utils/errors/index.js';
 
 export const createAnswerService = async (questionId, userId, content) => {
   // 1. Check if question exists
@@ -57,4 +58,31 @@ export const createAnswerService = async (questionId, userId, content) => {
       lastName: row.lastName
     }
   };
+};
+
+/**
+ * Delete an answer if the requester owns it or is an admin.
+ */
+export const deleteAnswerService = async (answerId, userId, userRole) => {
+  const [rows] = await db.query(
+    "SELECT answer_id, user_id FROM answers WHERE answer_id = ? LIMIT 1",
+    [answerId]
+  );
+
+  if (rows.length === 0) {
+    throw new NotFoundError("Answer not found");
+  }
+
+  const answer = rows[0];
+
+  if (userRole !== "admin" && Number(answer.user_id) !== Number(userId)) {
+    throw new ForbiddenError("You are not allowed to delete this answer");
+  }
+
+  await db.query(
+    "DELETE FROM answers WHERE answer_id = ?",
+    [answer.answer_id]
+  );
+
+  return { answerId: answer.answer_id };
 };
