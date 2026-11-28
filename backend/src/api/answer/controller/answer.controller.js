@@ -1,4 +1,5 @@
-import { createAnswerService } from "../service/answer.service.js";
+import { createAnswerService, deleteAnswerService } from "../service/answer.service.js";
+import { BadRequestError } from "../../../utils/errors/index.js";
 
 export const createAnswerController = async (req, res, next) => {
   try {
@@ -19,5 +20,33 @@ export const createAnswerController = async (req, res, next) => {
       success: false,
       message: error.message || "Internal server error",
     });
+  }
+};
+
+
+/**
+ * DELETE /api/answers/:answerId
+ * Allows answer owners and admins to delete answers.
+ */
+export const deleteAnswerController = async (req, res, next) => {
+  try {
+    const answerId = Number(req.params.answerId);
+
+    if (!Number.isInteger(answerId) || answerId <= 0) {
+      throw new BadRequestError("Invalid answer ID");
+    }
+
+    await deleteAnswerService(
+      answerId,
+      req.user.id,
+      req.user.role,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Answer deleted successfully.",
+    });
+  } catch (error) {
+    next(error);
   }
 };

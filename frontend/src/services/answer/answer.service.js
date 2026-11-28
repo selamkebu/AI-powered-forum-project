@@ -19,4 +19,10 @@ async function postAnswer(questionId, content) {
   return response.data.data;
 }
 
-export { assessAnswerFit, postAnswer };
+// Delete an answer (owner or admin).
+async function deleteAnswer(answerId) {
+  const response = await apiClient.delete(`/api/answers/${answerId}`);
+  return response.data;
+}
+
+export { assessAnswerFit, postAnswer, deleteAnswer };

@@ -1,5 +1,5 @@
 import express from "express";
-import { createAnswerController } from "../controller/answer.controller.js";
+import { createAnswerController, deleteAnswerController } from "../controller/answer.controller.js";
 import { createAnswerValidation } from "../validations/answer.validation.js";
 import { authenticateUser } from "../../../middleware/authentication.js";
 
@@ -11,6 +11,14 @@ router.post(
   authenticateUser,
   createAnswerValidation,
   createAnswerController,
+);
+
+
+// DELETE /api/answers/:answerId
+router.delete(
+  "/:answerId",
+  authenticateUser,
+  deleteAnswerController,
 );
 
 export default router;

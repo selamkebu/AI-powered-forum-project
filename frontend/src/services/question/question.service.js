@@ -55,6 +55,16 @@ async function createQuestion({ title, content }) {
   }
 }
 
+// Delete a question (owner or admin).
+async function deleteQuestion(questionHash) {
+  try {
+    const response = await apiClient.delete(`/api/questions/${questionHash}`);
+    return response.data;
+  } catch (error) {
+    throw handleQuestionError(error);
+  }
+}
+
 // Convert API errors into friendly messages.
 function handleQuestionError(error) {
   if (!error.response) {
@@ -100,10 +110,11 @@ async function getRelatedQuestions(questionHash) {
   return response.data;
 }
 
-export { getRelatedQuestions, getSingleQuestion };
+export { getRelatedQuestions, getSingleQuestion, deleteQuestion };
 
 export const questionService = {
   getQuestions,
   searchQuestionsSemantic,
   createQuestion,
+  deleteQuestion,
 };

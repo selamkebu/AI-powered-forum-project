@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { safeExecute } from "../../../../db/config.js";
-import { NotFoundError } from "../../../utils/errors/index.js";
+import { NotFoundError, ForbiddenError } from "../../../utils/errors/index.js";
 import {
   generateEmbedding,
   parseEmbedding,
@@ -498,4 +498,33 @@ export const createQuestionWithVectorService = async ({
     content,
     userId,
   };
+};
+
+
+/**
+ * Delete a question if the requester owns it or is an admin.
+ * Related answers and vectors are deleted through database cascades.
+ */
+export const deleteQuestionService = async (questionHash, userId, userRole) => {
+  const rows = await safeExecute(
+    "SELECT question_id, user_id FROM questions WHERE question_hash = ? LIMIT 1",
+    [questionHash],
+  );
+
+  if (rows.length === 0) {
+    throw new NotFoundError("Question not found");
+  }
+
+  const question = rows[0];
+
+  if (userRole !== "admin" && Number(question.user_id) !== Number(userId)) {
+    throw new ForbiddenError("You are not allowed to delete this question");
+  }
+
+  await safeExecute(
+    "DELETE FROM questions WHERE question_id = ?",
+    [question.question_id],
+  );
+
+  return { questionHash };
 };
