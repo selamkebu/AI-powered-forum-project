@@ -1,14 +1,20 @@
 import { apiClient } from "../core/api.client.js";
 
 // Get questions from the backend.
-async function getQuestions({ search, mine } = {}) {
+async function getQuestions({
+  search,
+  mine,
+  page = 1,
+  limit = 10,
+} = {}) {
   try {
     const params = {};
     const term = search?.trim();
 
     if (term) params.search = term;
     if (mine) params.mine = true;
-
+    params.page = page;
+    params.limit = limit;
     const response = await apiClient.get("/api/questions", { params });
 
     return {

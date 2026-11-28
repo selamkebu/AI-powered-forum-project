@@ -9,7 +9,6 @@ import {
 } from "./vector.service.js";
 
 const ANSWERS_LIMIT = 100;
-const QUESTIONS_LIMIT = 100;
 
 const escapeLike = (value) => value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 
@@ -17,7 +16,16 @@ export const getQuestionsService = async ({
   userId,
   search = "",
   mine = false,
+  page = 1,
+  limit = 10,
 }) => {
+  // Calculate pagination values
+  const currentPage = Math.max(1, Number(page) || 1);
+  const pageSize = [10, 20].includes(Number(limit))
+    ? Number(limit)
+    : 10;
+  const offset = (currentPage - 1) * pageSize;
+
   const where = [];
   const params = [];
 
@@ -27,14 +35,29 @@ export const getQuestionsService = async ({
   }
 
   const keyword = search.trim();
+
   if (keyword) {
     const pattern = `%${escapeLike(keyword)}%`;
     where.push("(q.title LIKE ? OR q.content LIKE ?)");
     params.push(pattern, pattern);
   }
 
-  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const whereSql = where.length
+    ? `WHERE ${where.join(" AND ")}`
+    : "";
 
+  // Count all matching questions
+  const countRows = await safeExecute(
+    `SELECT COUNT(*) AS total
+     FROM questions q
+     ${whereSql}`,
+    params,
+  );
+
+  const total = Number(countRows[0]?.total ?? 0);
+  const totalPages = Math.ceil(total / pageSize);
+
+  // Fetch only the questions for the current page
   const rows = await safeExecute(
     `SELECT q.question_id, q.question_hash, q.title, q.content,
             q.created_at, q.updated_at,
@@ -46,8 +69,8 @@ export const getQuestionsService = async ({
      ${whereSql}
      GROUP BY q.question_id, u.user_id
      ORDER BY q.created_at DESC, q.question_id DESC
-     LIMIT ${QUESTIONS_LIMIT}`,
-    params,
+     LIMIT ? OFFSET ?`,
+    [...params, pageSize, offset],
   );
 
   const questions = rows.map((r) => ({
@@ -68,8 +91,12 @@ export const getQuestionsService = async ({
   return {
     questions,
     meta: {
-      limit: QUESTIONS_LIMIT,
-      total: questions.length,
+      page: currentPage,
+      limit: pageSize,
+      total,
+      totalPages,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1,
       sortBy: "newest",
       sortOrder: "desc",
     },

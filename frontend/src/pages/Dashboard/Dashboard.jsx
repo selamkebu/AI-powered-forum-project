@@ -128,6 +128,13 @@ export default function Dashboard() {
   const [questions, setQuestions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [meta, setMeta] = useState(null);
+  // Reset pagination when the search changes
+useEffect(() => {
+  setPage(1);
+}, [keyword, semanticQuery]);
 
   // STEP 3: fetch on mount and whenever the URL search changes.
   useEffect(() => {
@@ -139,19 +146,22 @@ export default function Dashboard() {
     setHasError(false);
 
     const request = isSemantic
-      ? questionService.searchQuestionsSemantic(semanticQuery, {
-          k: SEMANTIC_RESULT_LIMIT,
-        })
-      : questionService.getQuestions({ search: keyword });
-
+  ? questionService.searchQuestionsSemantic(semanticQuery, {
+      k: SEMANTIC_RESULT_LIMIT,
+    })
+  : questionService.getQuestions({ search: keyword, page, limit });
     request
-      .then(({ questions: result }) => {
-        if (!ignore) setQuestions(result);
-      })
+     .then(({ questions: result, meta: resultMeta }) => {
+  if (!ignore) {
+    setQuestions(result);
+    setMeta(isSemantic ? null : resultMeta);
+  }
+})
       .catch(() => {
         if (!ignore) {
           setQuestions([]);
           setHasError(true);
+          setMeta(null);
         }
       })
       .finally(() => {
@@ -161,7 +171,7 @@ export default function Dashboard() {
     return () => {
       ignore = true;
     };
-  }, [keyword, semanticQuery, isSemantic, queryTooShort]);
+}, [keyword, semanticQuery, isSemantic, queryTooShort, page, limit]);
 
   const firstName = user?.firstName?.trim();
   const welcomeLine = firstName
@@ -206,7 +216,7 @@ export default function Dashboard() {
           </p>
         </div>
       );
-    }
+    };
 
     if (showLoading) {
       return (
@@ -242,17 +252,51 @@ export default function Dashboard() {
     }
 
     // Each row uses the shared, exported QuestionCard
-    return (
-      <ul className={styles.dashboard__list}>
-        {visibleQuestions.map((question) => (
-          <li key={question.id}>
-            <QuestionCard question={question} />
-          </li>
-        ))}
-      </ul>
-    );
-  };
+   return (
+  <>
+    <ul className={styles.dashboard__list}>
+      {visibleQuestions.map((question) => (
+        <li key={question.id}>
+          <QuestionCard question={question} />
+        </li>
+      ))}
+    </ul>
 
+    {!isSemantic && meta && (
+      <div className={styles.pagination}>
+        <button
+          onClick={() => setPage((prev) => prev - 1)}
+          disabled={!meta.hasPreviousPage}
+        >
+          Previous
+        </button>
+
+        <span>
+          Page {meta.page} of {meta.totalPages}
+        </span>
+
+        <button
+          onClick={() => setPage((prev) => prev + 1)}
+          disabled={!meta.hasNextPage}
+        >
+          Next
+        </button>
+
+        <select
+          value={limit}
+          onChange={(e) => {
+            setLimit(Number(e.target.value));
+            setPage(1);
+          }}
+        >
+          <option value={10}>10 per page</option>
+          <option value={20}>20 per page</option>
+        </select>
+      </div>
+    )}
+  </>
+);
+  };
   return (
     <div className={styles.dashboard}>
       {/* Welcome + quick actions + stats (hidden while a search is active) */}
@@ -295,8 +339,7 @@ export default function Dashboard() {
             !hasError && (
               <div className={styles.dashboard__statsWrap}>
                 <p className={styles.dashboard__statsNote}>
-                  Figures below describe the newest threads in this feed (up to
-                  100 from the API).
+                Figures below describe the questions on the current page.
                 </p>
                 <div className={styles.dashboard__stats}>
                   {[
