@@ -1,7 +1,7 @@
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError, NotFoundError } from "../../../utils/errors/index.js";
 import {
-  createDocumentFromUploadService,
+  
   assertOwnedDocument,
   buildPdfFileName,
   createDocumentFromUploadService,
@@ -51,8 +51,6 @@ export const getDocumentMetaController= async (req, res, next) => {
     const { documentId } = req.params;
 
     const result = await getDocumentMetaService(documentId);
-
-    console.log(result);
 
     res.status(StatusCodes.OK).json({
       success: true,
