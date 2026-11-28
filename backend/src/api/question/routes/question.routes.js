@@ -1,4 +1,6 @@
 import express from "express";
+import { updateQuestionController } from "../controller/question.edit.controller.js";
+import { updateQuestionValidation } from "../validations/question.edit.validation.js";
 import { authenticateUser } from "../../../middleware/authentication.js";
 import {
   getQuestionsController,
@@ -104,5 +106,15 @@ router.post(
 
 )
 
-
+/**
+ * @route PUT /api/questions/:questionHash
+ * @desc Update a question (Owner or Admin only)
+ * @access Private
+ */
+router.put(
+  "/:questionHash",
+  authenticateUser,
+  updateQuestionValidation,
+  updateQuestionController,
+);
 export default router;
