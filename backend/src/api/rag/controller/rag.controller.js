@@ -4,11 +4,40 @@ import {
   createDocumentFromUploadService,
   assertOwnedDocument,
   buildPdfFileName,
+  createDocumentFromUploadService,
   deleteDocumentService,
   getUploadRoot,
   resolveDocumentFilePath,
   getDocumentMetaService
 } from "../service/rag.service.js";
+
+export const createDocumentController = async (req, res, next) => {
+  try {
+    // uploadSinglePdf from rag.upload.config.js puts the file's details on req.file: path, filename, size, mimetype and originalname.
+
+    if (!req.file) {
+      throw new BadRequestError(
+        'A PDF file is required in the "file" form field',
+      );
+    }
+
+    const document = await createDocumentFromUploadService(
+      req.user.id,
+      req.file,
+    );
+
+    return res.status(StatusCodes.CREATED).json({
+      success: true,
+      message:
+        document.status === "ready"
+          ? "Document uploaded and processed."
+          : "Document uploaded, but processing failed.",
+      data: document,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * Get RAG Document Metadata - feature/T-24-rag-documents branch
@@ -35,28 +64,6 @@ export const getDocumentMetaController= async (req, res, next) => {
   catch(error) {
     next(error);
   }
-};
-
-
-export const createDocumentController = async (req, res) => {
-  // uploadSinglePdf from rag.upload.config.js puts the file's details on req.file: path, filename, size, mimetype and originalname.
-
-  if (!req.file) {
-    throw new BadRequestError(
-      'A PDF file is required in the "file" form field',
-    );
-  }
-
-  const document = await createDocumentFromUploadService(req.user.id, req.file);
-
-  res.status(StatusCodes.CREATED).json({
-    success: true,
-    message:
-      document.status === "ready"
-        ? "Document uploaded and processed."
-        : "Document uploaded, but processing failed.",
-    data: document,
-  });
 };
 
 
