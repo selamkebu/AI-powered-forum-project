@@ -1,6 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { safeExecute } from "../../../../db/config.js";
-import { NotFoundError } from "../../../utils/errors/index.js";
+import {
+  BadRequestError,
+  NotFoundError,
+} from "../../../utils/errors/index.js";
 import {
   generateEmbedding,
   parseEmbedding,
@@ -20,11 +23,14 @@ export const getQuestionsService = async ({
   limit = 10,
 }) => {
   // Calculate pagination values
-  const currentPage = Math.max(1, Number(page) || 1);
-  const pageSize = [10, 20].includes(Number(limit))
+  const currentPage = Number(page);
+  if (!Number.isSafeInteger(currentPage) || currentPage < 1) {
+    throw new BadRequestError("page must be a positive safe integer");
+  }
+
+  const pageSize = [5, 10, 20].includes(Number(limit))
     ? Number(limit)
     : 10;
-  const offset = (currentPage - 1) * pageSize;
 
   const where = [];
   const params = [];
@@ -56,6 +62,15 @@ export const getQuestionsService = async ({
 
   const total = Number(countRows[0]?.total ?? 0);
   const totalPages = Math.ceil(total / pageSize);
+
+  if (currentPage > Math.max(totalPages, 1)) {
+    throw new BadRequestError("page exceeds the available pages");
+  }
+
+  const offset = (currentPage - 1) * pageSize;
+  if (!Number.isSafeInteger(offset)) {
+    throw new BadRequestError("page offset is out of range");
+  }
 
   // Fetch only the questions for the current page
   const rows = await safeExecute(
