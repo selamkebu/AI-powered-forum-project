@@ -157,9 +157,8 @@ export const deleteDocumentService = async (documentId, userId) => {
   };
 };
 
-
 /**
- * 
+ *
  * Retrieves document metadata from the database using the document ID.
  * Joins the documents table with the users table to verify the document-user relationship.
  * Throws a NotFoundError if the document does not exist.
@@ -168,19 +167,19 @@ export const deleteDocumentService = async (documentId, userId) => {
  * @returns {Promise<object>} A promise containing the document metadata.
  */
 
-export const getDocumentMetaService= async (doumentId) => {
+export const getDocumentMetaService = async (doumentId) => {
   const documentSql = `
-    SELECT 
-        d.document_id,         
+    SELECT
+        d.document_id,
         d.title,
-        d.mime_type,        
+        d.mime_type,
         d.byte_size,
         d.status,
         d.error_message,
         d.created_at,
         d.updated_at,
         d.user_id,
-        d.storage_path       
+        d.storage_path
     FROM documents d
     INNER JOIN users u ON d.user_id = u.user_id
     WHERE d.document_id = ?
@@ -192,21 +191,21 @@ export const getDocumentMetaService= async (doumentId) => {
     throw new NotFoundError("Documents not found");
   }
 
-  const document =documentRows[0];  
-  return{
-    data:{
-    id: document.doumentId,
-    title: document.title,
-    mime_type: document.mime_type,
-    byte_size: document.byte_size,
-    status: document.status,
-    error_message: document.error_message,
-    created_at: document.created_at,
-    updated_at: document.updated_at,
-    user_id: document.user_id,
-    storage_path: document.storage_path
-    }
-  }
+  const document = documentRows[0];
+  return {
+    data: {
+      id: document.doumentId,
+      title: document.title,
+      mime_type: document.mime_type,
+      byte_size: document.byte_size,
+      status: document.status,
+      error_message: document.error_message,
+      created_at: document.created_at,
+      updated_at: document.updated_at,
+      user_id: document.user_id,
+      storage_path: document.storage_path,
+    },
+  };
 };
 
 /**
@@ -485,4 +484,26 @@ export const createDocumentFromUploadService = async (userId, file) => {
     [documentId],
   );
   return rows[0];
+};
+/**
+ * T-24: List all RAG documents belonging to a user.
+ */
+export const listDocumentsForUserService = async (userId) => {
+  const documents = await safeExecute(
+    `SELECT
+       document_id,
+       title,
+       mime_type,
+       byte_size,
+       status,
+       error_message,
+       created_at,
+       updated_at
+     FROM documents
+     WHERE user_id = ?
+     ORDER BY created_at DESC`,
+    [userId],
+  );
+
+  return documents;
 };

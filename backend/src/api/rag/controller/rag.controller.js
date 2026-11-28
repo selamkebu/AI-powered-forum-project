@@ -1,14 +1,14 @@
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError, NotFoundError } from "../../../utils/errors/index.js";
 import {
-  
   assertOwnedDocument,
   buildPdfFileName,
   createDocumentFromUploadService,
   deleteDocumentService,
   getUploadRoot,
   resolveDocumentFilePath,
-  getDocumentMetaService
+  getDocumentMetaService,
+  listDocumentsForUserService,
 } from "../service/rag.service.js";
 
 export const createDocumentController = async (req, res, next) => {
@@ -134,4 +134,20 @@ export const deleteDocumentController = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * T-24: GET /api/rag/documents
+ * Lists documents uploaded by the authenticated user.
+ */
+export const listDocumentsController = async (req, res, next) => {
+  try {
+    const documents = await listDocumentsForUserService(req.user.id);
 
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Documents fetched successfully.",
+      data: documents,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
