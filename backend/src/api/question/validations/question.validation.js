@@ -19,12 +19,15 @@ export const getQuestionsValidation = [
     .optional()
     .isInt({ min: 1 })
     .withMessage("page must be a positive integer")
+    .bail()
+    .custom((value) => Number.isSafeInteger(Number(value)))
+    .withMessage("page must be a safe integer")
     .toInt(),
 
   query("limit")
     .optional()
-    .isIn(["10", "20"])
-    .withMessage("limit must be either 10 or 20")
+    .isIn(["5", "10", "20"])
+    .withMessage("limit must be 5, 10, or 20")
     .toInt(),
 
   validationErrorHandler,

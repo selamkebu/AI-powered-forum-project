@@ -120,6 +120,7 @@ export default function Dashboard() {
   // STEP 1: the Navbar owns the search box; we only READ ?q= and ?semantic=.
   const keyword = searchParams.get("q")?.trim() ?? "";
   const semanticQuery = searchParams.get("semantic")?.trim() ?? "";
+  const searchKey = JSON.stringify([keyword, semanticQuery]);
   const isSemantic = semanticQuery !== "";
   const queryTooShort =
     isSemantic && semanticQuery.length < SEMANTIC_MIN_LENGTH;
@@ -128,13 +129,16 @@ export default function Dashboard() {
   const [questions, setQuestions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
-  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(() => ({
+    searchKey,
+    page: 1,
+  }));
+  if (pagination.searchKey !== searchKey) {
+    setPagination({ searchKey, page: 1 });
+  }
+  const page = pagination.page;
   const [limit, setLimit] = useState(10);
   const [meta, setMeta] = useState(null);
-  // Reset pagination when the search changes
-useEffect(() => {
-  setPage(1);
-}, [keyword, semanticQuery]);
 
   // STEP 3: fetch on mount and whenever the URL search changes.
   useEffect(() => {
@@ -265,7 +269,7 @@ useEffect(() => {
     {!isSemantic && meta && (
       <div className={styles.pagination}>
         <button
-          onClick={() => setPage((prev) => prev - 1)}
+          onClick={() => setPagination({ searchKey, page: page - 1 })}
           disabled={!meta.hasPreviousPage}
         >
           Previous
@@ -276,7 +280,7 @@ useEffect(() => {
         </span>
 
         <button
-          onClick={() => setPage((prev) => prev + 1)}
+          onClick={() => setPagination({ searchKey, page: page + 1 })}
           disabled={!meta.hasNextPage}
         >
           Next
@@ -286,9 +290,10 @@ useEffect(() => {
           value={limit}
           onChange={(e) => {
             setLimit(Number(e.target.value));
-            setPage(1);
+            setPagination({ searchKey, page: 1 });
           }}
         >
+          <option value={5}>5 per page</option>
           <option value={10}>10 per page</option>
           <option value={20}>20 per page</option>
         </select>

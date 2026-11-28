@@ -16,6 +16,28 @@ export default function MyQuestions() {
   const [page, setPage] = useState(1);
 const [limit, setLimit] = useState(10);
 const [meta, setMeta] = useState(null);
+  const [requestAttempt, setRequestAttempt] = useState(0);
+
+  function startRequest() {
+    setIsLoading(true);
+    setHasError(false);
+  }
+
+  function retryRequest() {
+    startRequest();
+    setRequestAttempt((attempt) => attempt + 1);
+  }
+
+  function changePage(nextPage) {
+    startRequest();
+    setPage(nextPage);
+  }
+
+  function changeLimit(event) {
+    startRequest();
+    setLimit(Number(event.target.value));
+    setPage(1);
+  }
 
   // Runs once on mount: GET /api/questions?mine=true
   useEffect(() => {
@@ -27,6 +49,7 @@ const [meta, setMeta] = useState(null);
     if (!ignore) {
       setMyQuestions(Array.isArray(questions) ? questions : []);
       setMeta(resultMeta);
+      setHasError(false);
     }
   })
       .catch(() => {
@@ -44,7 +67,7 @@ const [meta, setMeta] = useState(null);
     return () => {
       ignore = true;
     };
-  }, [page, limit]);
+  }, [page, limit, requestAttempt]);
 
   // Picks what the list card shows: loading -> error -> empty -> list
   function renderContent() {
@@ -56,6 +79,15 @@ const [meta, setMeta] = useState(null);
       return (
         <div className={`${styles.messageBox} ${styles.error}`}>
           Failed to fetch questions.
+          <div>
+            <button
+              type="button"
+              className={styles.retryButton}
+              onClick={retryRequest}
+            >
+              Retry
+            </button>
+          </div>
         </div>
       );
     }
@@ -88,7 +120,7 @@ const [meta, setMeta] = useState(null);
     {meta && (
       <div className={styles.pagination}>
         <button
-          onClick={() => setPage((prev) => prev - 1)}
+          onClick={() => changePage(page - 1)}
           disabled={!meta.hasPreviousPage}
         >
           Previous
@@ -99,7 +131,7 @@ const [meta, setMeta] = useState(null);
         </span>
 
         <button
-          onClick={() => setPage((prev) => prev + 1)}
+          onClick={() => changePage(page + 1)}
           disabled={!meta.hasNextPage}
         >
           Next
@@ -107,11 +139,9 @@ const [meta, setMeta] = useState(null);
 
         <select
           value={limit}
-          onChange={(e) => {
-            setLimit(Number(e.target.value));
-            setPage(1);
-          }}
+          onChange={changeLimit}
         >
+          <option value={5}>5 per page</option>
           <option value={10}>10 per page</option>
           <option value={20}>20 per page</option>
         </select>
