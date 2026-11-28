@@ -1,5 +1,7 @@
 import { safeExecute } from "../../../../db/config.js";
 import { NotFoundError } from "../../../utils/errors/index.js";
+import { StatusCodes } from "http-status-codes";
+import { saveQuestionEmbedding } from "./vector.service.js";
 
 export const updateQuestionService = async ({
   questionHash,
@@ -20,33 +22,26 @@ export const updateQuestionService = async ({
   const questionId = questionRows[0].question_id;
   const questionOwnerId = questionRows[0].user_id;
 
-  // DEBUG: Look at your terminal to see what is happening!
-  console.log("--- PERMISSION CHECK ---");
-  console.log(
-    "Question Owner ID:",
-    questionOwnerId,
-    "Type:",
-    typeof questionOwnerId,
-  );
-  console.log("Current User ID:", userId, "Type:", typeof userId);
-  console.log("Current User Role:", `"${userRole}"`); // Quotes reveal hidden spaces
-
-  // FIX: Use Number() to ensure type matching
   const isOwner = Number(questionOwnerId) === Number(userId);
-
-  // FIX: Use trim() and check safely
   const isAdmin = userRole && userRole.trim() === "admin";
 
   if (!isOwner && !isAdmin) {
     const error = new Error("You are not authorized to edit this question");
-    error.statusCode = 403;
+    error.statusCode = StatusCodes.FORBIDDEN;
     throw error;
   }
 
   await safeExecute(
-    `UPDATE questions SET title = ?, content = ? WHERE question_id = ?`,
+    `UPDATE questions SET title = ?, content = ?, updated_at = CURRENT_TIMESTAMP WHERE question_id = ?`,
     [title, content, questionId],
   );
+
+  // Sync AI vector for semantic search
+  try {
+    await saveQuestionEmbedding(questionId, title);
+  } catch (error) {
+    console.error(`Failed to update vector for question ${questionId}:`, error);
+  }
 
   const updatedRows = await safeExecute(
     `SELECT
