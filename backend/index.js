@@ -9,6 +9,7 @@ const port = process.env.PORT || 3777;
 
 // Middleware
 app.use(cors());
+app.set("json spaces", 2);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

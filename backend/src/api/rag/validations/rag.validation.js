@@ -11,6 +11,7 @@ export const documentIdParamValidation = [
     .withMessage("Document id must be a positive integer")
     .bail()
     .toInt(),
+
   validationErrorHandler,
 ];
 export const deleteDocumentValidation = (req, res, next) => {
