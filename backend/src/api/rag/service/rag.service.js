@@ -194,7 +194,7 @@ export const getDocumentMetaService = async (doumentId) => {
   const document = documentRows[0];
   return {
     data: {
-      id: document.doumentId,
+      id: document.document_id,
       title: document.title,
       mime_type: document.mime_type,
       byte_size: document.byte_size,
