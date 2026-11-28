@@ -1,34 +1,67 @@
 import { StatusCodes } from "http-status-codes";
 import { BadRequestError, NotFoundError } from "../../../utils/errors/index.js";
 import {
-  createDocumentFromUploadService,
   assertOwnedDocument,
   buildPdfFileName,
+  createDocumentFromUploadService,
   deleteDocumentService,
   getUploadRoot,
   resolveDocumentFilePath,
   queryDocumentService,
+  getDocumentMetaService,
+  listDocumentsForUserService,
+  searchInDocumentService,
 } from "../service/rag.service.js";
 
-export const createDocumentController = async (req, res) => {
-  // uploadSinglePdf from rag.upload.config.js puts the file's details on req.file: path, filename, size, mimetype and originalname.
+export const createDocumentController = async (req, res, next) => {
+  try {
+    // uploadSinglePdf from rag.upload.config.js puts the file's details on req.file: path, filename, size, mimetype and originalname.
 
-  if (!req.file) {
-    throw new BadRequestError(
-      'A PDF file is required in the "file" form field',
+    if (!req.file) {
+      throw new BadRequestError(
+        'A PDF file is required in the "file" form field',
+      );
+    }
+
+    const document = await createDocumentFromUploadService(
+      req.user.id,
+      req.file,
     );
+
+    return res.status(StatusCodes.CREATED).json({
+      success: true,
+      message:
+        document.status === "ready"
+          ? "Document uploaded and processed."
+          : "Document uploaded, but processing failed.",
+      data: document,
+    });
+  } catch (error) {
+    next(error);
   }
+};
 
-  const document = await createDocumentFromUploadService(req.user.id, req.file);
+/**
+ * Get RAG Document Metadata - feature/T-24-rag-documents branch
+ * @param {object} req - request object containing the documentId in URL parameters.
+ * @param {object} res - response object used to return the document metadata.
+ * @param {Function} next - next function used to forward errors to the error-handling middleware.
+ * @returns {Promise<void>} Sends a JSON response containing the document metadata and a success message.
+ */
+export const getDocumentMetaController = async (req, res, next) => {
+  try {
+    const { documentId } = req.params;
 
-  res.status(StatusCodes.CREATED).json({
-    success: true,
-    message:
-      document.status === "ready"
-        ? "Document uploaded and processed."
-        : "Document uploaded, but processing failed.",
-    data: document,
-  });
+    const result = await getDocumentMetaService(documentId);
+
+    res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Document metadata fetched successfully",
+      ...result,
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -115,6 +148,48 @@ export let queryDocumentController = async (req, res, next) => {
     res.status(StatusCodes.OK).json({
       success: true,
       message: "Answer and Citation",
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * T-24: GET /api/rag/documents
+ * Lists documents uploaded by the authenticated user.
+ */
+export const listDocumentsController = async (req, res, next) => {
+  try {
+    const documents = await listDocumentsForUserService(req.user.id);
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Documents fetched successfully.",
+      data: documents,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /api/rag/documents/:documentId/search
+ * Performs semantic search within the user's ready PDF and returns ranked excerpts.
+ */
+export const searchInDocumentController = async (req, res, next) => {
+  try {
+    const data = await searchInDocumentService({
+      userId: req.user.id,
+      documentId: Number(req.params.documentId),
+      query: req.query.query,
+      k: req.query.k,
+      threshold: req.query.threshold,
+    });
+
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      message: "Ranked chunk excerpts",
       data,
     });
   } catch (error) {
